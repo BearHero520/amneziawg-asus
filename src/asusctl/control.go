@@ -67,6 +67,7 @@ type Status struct {
 	Health       Health       `json:"health"`
 }
 type Result struct {
+	Core        *CoreStatus   `json:"core,omitempty"`
 	Logs        []LogEntry    `json:"logs,omitempty"`
 	Diagnostics []Diagnostic  `json:"diagnostics,omitempty"`
 	OK          bool          `json:"ok"`
@@ -252,7 +253,7 @@ func resolveEndpoint(ep string) (string, error) {
 	return net.JoinHostPort(ips[0].String(), port), nil
 }
 func readStatus() Status {
-	s := Status{Settings: readSettings(), Version: "0.4.0", Peers: []PeerStatus{}, DNS: []string{}}
+	s := Status{Settings: readSettings(), Version: coreVersion, Peers: []PeerStatus{}, DNS: []string{}}
 	s.Protected = guardActive()
 	s.GuardPending = exists(guardPath) && !s.Protected
 	s.Profiles = profiles()
@@ -516,6 +517,9 @@ func lock() (func(), error) {
 	return func() { _ = os.Remove(p) }, nil
 }
 func execute(action string) (result Result, err error) {
+	if action == "core-info" || action == "core-status" {
+		return executeCore(action)
+	}
 	if action == "logs" {
 		return Result{OK: true, Message: "操作日志已刷新", Logs: readLogs()}, nil
 	}
@@ -537,6 +541,12 @@ func execute(action string) (result Result, err error) {
 		return Result{}, e
 	}
 	defer release()
+	if updateBusy() {
+		return Result{}, errors.New("核心升级或恢复正在进行，请查看核心更新页面")
+	}
+	if strings.HasPrefix(action, "core-") {
+		return executeCore(action)
+	}
 	defer func() { recordOperation(action, err == nil) }()
 	if strings.HasPrefix(action, "server-") {
 		return executeServer(action)
@@ -651,11 +661,33 @@ func Run(args []string) bool {
 		e = loadWebRequest()
 	}
 	if e == nil {
-		result, e = execute(args[2])
+		if args[1] == "ctl" && args[2] == "core-worker" {
+			e = runCoreWorker()
+			result.OK = e == nil
+		} else if args[1] == "ctl" && args[2] == "core-boot-recover" {
+			e = recoverCoreBoot()
+			result.OK = e == nil
+		} else if args[1] == "ctl" && (args[2] == "core-resume" || args[2] == "core-stop") {
+			j := loadJob()
+			if !coreAuthorized(j) {
+				e = errors.New("无效的更新任务")
+			} else if args[2] == "core-stop" {
+				e = coreStop(j)
+			} else {
+				e = coreResume(j)
+			}
+			result.OK = e == nil
+		} else {
+			result, e = execute(args[2])
+		}
 	}
 	if e != nil {
 		s := readStatus()
 		result = Result{OK: false, Message: e.Error(), Status: &s}
+		if strings.HasPrefix(args[2], "core-") {
+			v := coreStatus()
+			result = Result{OK: false, Message: e.Error(), Core: &v}
+		}
 		if strings.HasPrefix(args[2], "server-") {
 			v := serverStatus()
 			result = Result{OK: false, Message: e.Error(), Server: &v}

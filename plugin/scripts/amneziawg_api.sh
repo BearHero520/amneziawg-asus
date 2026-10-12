@@ -3,7 +3,7 @@ export PATH=/koolshare/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 . /koolshare/scripts/base.sh
 case "${2:-}" in
- logs|diagnose|status|up|down|server-status|server-up|server-down)
+ core-status|core-check|core-upgrade|core-rollback|logs|diagnose|status|up|down|server-status|server-up|server-down)
   result="$(/koolshare/bin/amneziawg-go web "$2")"
   ;;
  import|settings|switch|delete|server-save|server-add|server-delete|server-enable|server-disable|server-export|request-check)

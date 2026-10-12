@@ -12,9 +12,13 @@ has_tool() {
 umask 077
 DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 [ -f /koolshare/scripts/base.sh ] || { echo '需要 ASUSGO / KoolCenter 软件中心'; exit 1; }
-[ "$(uname -m)" = aarch64 ] || { echo '本包仅支持 aarch64 / ARM64'; exit 1; }
-model="$(nvram get productid)"
-[ "$model" = RT-BE88U ] || { echo '本测试版仅面向 RT-BE88U'; exit 1; }
+package_arch="$(cat "$DIR/package-arch")"
+case "$package_arch:$(uname -m)" in arm64:aarch64|armv7:armv7l) ;; *) echo '安装包架构不匹配，请选择 ARM64 或 ARMv7 对应包'; exit 1 ;; esac
+kernel="$(uname -r)"
+major="$(echo "$kernel" | cut -d. -f1)"; minor="$(echo "$kernel" | cut -d. -f2)"
+case "$major:$minor" in *[!0-9:]*|:*) echo '无法识别 Linux 内核版本'; exit 1 ;; esac
+[ "$major" -gt 3 ] || { [ "$major" -eq 3 ] && [ "$minor" -ge 2 ]; } || { echo '当前核心需要 Linux 3.2 或更新版本；不支持旧版 2.6 固件'; exit 1; }
+[ ! -f /koolshare/amneziawg/update-busy ] || { echo '核心更新或恢复尚未结束，取消安装'; exit 1; }
 for tool in dbus ip iptables; do has_tool "$tool" || { echo "缺少 $tool"; exit 1; }; done
 chmod 755 "$DIR/bin/amneziawg-go"
 "$DIR/bin/amneziawg-go" --version || { echo '核心无法在当前固件运行'; exit 1; }
@@ -32,6 +36,8 @@ chmod 700 /koolshare/amneziawg /koolshare/amneziawg/config
 cp "$DIR/bin/amneziawg-go" /koolshare/bin/amneziawg-go.new
 chmod 755 /koolshare/bin/amneziawg-go.new
 mv /koolshare/bin/amneziawg-go.new /koolshare/bin/amneziawg-go
+printf '%s\n' '0.5.0' > /koolshare/amneziawg/plugin-version
+rm -f /koolshare/bin/amneziawg-go.previous /koolshare/amneziawg/core-backup.json /koolshare/amneziawg/update-offer.json /koolshare/amneziawg/update-state.json
 cp "$DIR/scripts/amneziawg_api.sh" /koolshare/scripts/amneziawg_api.sh
 cp "$DIR/scripts/amneziawg_service.sh" /koolshare/scripts/amneziawg_service.sh
 cp "$DIR/uninstall.sh" /koolshare/scripts/uninstall_amneziawg.sh
@@ -41,15 +47,17 @@ cp "$DIR/res/amneziawg-ui.js" /koolshare/res/amneziawg-ui.js
 cp "$DIR/res/amneziawg-qrcode.js" /koolshare/res/amneziawg-qrcode.js
 cp "$DIR/res/amneziawg-config.js" /koolshare/res/amneziawg-config.js
 chmod 644 /koolshare/res/amneziawg-qrcode.js /koolshare/res/amneziawg-config.js
+cp "$DIR/res/amneziawg-core.js" /koolshare/res/amneziawg-core.js
+chmod 644 /koolshare/res/amneziawg-core.js
 cp "$DIR/res/amneziawg-logs.js" /koolshare/res/amneziawg-logs.js
 chmod 644 /koolshare/res/amneziawg-logs.js
 cp "$DIR/res/amneziawg-server.js" /koolshare/res/amneziawg-server.js
 chmod 644 /koolshare/res/amneziawg-server.js
-cp "$DIR/res/amneziawg-0.4.0.css" /koolshare/res/amneziawg-0.4.0.css
+cp "$DIR/res/amneziawg-0.5.0.css" /koolshare/res/amneziawg-0.5.0.css
 mkdir -p /koolshare/res/amneziawg-icons
 cp "$DIR/res/amneziawg-icons/"*.svg /koolshare/res/amneziawg-icons/
 chmod 755 /koolshare/res/amneziawg-icons
-chmod 644 /koolshare/res/amneziawg-ui.js /koolshare/res/amneziawg-0.4.0.css /koolshare/res/amneziawg-icons/*.svg
+chmod 644 /koolshare/res/amneziawg-ui.js /koolshare/res/amneziawg-0.5.0.css /koolshare/res/amneziawg-icons/*.svg
 cp "$DIR/res/icon-amneziawg.png" /koolshare/res/icon-amneziawg.png
 cp "$DIR/licenses/"* /koolshare/amneziawg/licenses/
 chmod 755 /koolshare/scripts/amneziawg_*.sh /koolshare/scripts/uninstall_amneziawg.sh
@@ -71,11 +79,11 @@ if ! grep -q '^# BEGIN AMNEZIAWG DNS$' "$DNS_ADD" 2>/dev/null; then
  mv "$DNS_ADD.awg-new" "$DNS_ADD"
  if has_tool service; then service restart_dnsmasq; fi
 fi
-dbus set amneziawg_version=0.4.0
-dbus set softcenter_module_amneziawg_version=0.4.0
+dbus set amneziawg_version=0.5.0
+dbus set softcenter_module_amneziawg_version=0.5.0
 dbus set softcenter_module_amneziawg_install=1
 dbus set softcenter_module_amneziawg_name=amneziawg
 dbus set softcenter_module_amneziawg_title=AmneziaWG
-dbus set softcenter_module_amneziawg_description='AmneziaWG 客户端与服务端 · RT-BE88U 测试版'
+dbus set softcenter_module_amneziawg_description='AmneziaWG 客户端与服务端 · ARM64 / ARMv7 测试版'
 dbus set softcenter_module_amneziawg_home_url=Module_amneziawg.asp
 echo 'AmneziaWG 安装完成。隧道尚未启动，请打开插件导入配置。'

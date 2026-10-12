@@ -9,7 +9,7 @@ function awgInitial(){
  if(typeof show_menu==='function')show_menu(menu_hook);
  awgFields.forEach(function(id){awgEl(id).addEventListener('change',function(){awgDirty=true;});awgEl(id).addEventListener('input',function(){awgDirty=true;});});
  if(typeof awgServerInitial==='function')awgServerInitial();
- awgPage('server');awgTimer=setInterval(function(){if(!awgBusy&&awgCurrentPage!=='logs')awgPollStatus(awgCurrentPage==='server'?'server-status':'status',false);},10000);
+ awgPage('server');awgTimer=setInterval(function(){if(!awgBusy&&awgCurrentPage!=='logs')awgPollStatus((awgCurrentPage==='core'||(typeof awgCore!=='undefined'&&awgCore&&awgCore.busy))?'core-status':awgCurrentPage==='server'?'server-status':'status',false);},10000);
 }
 function awgButtons(){
  var running=awgLastStatus&&awgLastStatus.running, protectedNow=awgLastStatus&&(awgLastStatus.protected||awgLastStatus.guard_pending);
@@ -22,6 +22,7 @@ function awgButtons(){
  awgEl('awg_delete').disabled=awgBusy||!awgEl('awg_profile').value;
  if(typeof awgUIButtons==='function')awgUIButtons();
  if(typeof awgServerButtons==='function')awgServerButtons();
+ if(typeof awgCoreButtons==='function')awgCoreButtons();
 }
 // Softcenter wraps http_response in a quoted result without escaping its contents.
 // New backends return ASCII base64; also read the raw wrapper used by 0.1.1.
@@ -46,7 +47,7 @@ function awgDecodeResponse(text){
  return value;
 }
 function awgResponseError(text){
- if(awgPendingAction&&awgPendingAction.indexOf('server-')===0&&typeof awgServer!=='undefined'){awgServer=null;awgEl('sv_status').textContent='状态读取失败';}else if(awgPendingAction!=='logs'&&awgPendingAction!=='diagnose'){awgLastStatus=null;awgEl('awg_state').textContent='状态读取失败';}awgMessage(text,true);
+ if(awgPendingAction&&awgPendingAction.indexOf('server-')===0&&typeof awgServer!=='undefined'){awgServer=null;awgEl('sv_status').textContent='状态读取失败';}else if(awgPendingAction&&awgPendingAction.indexOf('core-')===0){}else if(awgPendingAction!=='logs'&&awgPendingAction!=='diagnose'){awgLastStatus=null;awgEl('awg_state').textContent='状态读取失败';}awgMessage(text,true);
 }
 function awgEncodeRequest(fields){
  var encoded={};Object.keys(fields||{}).forEach(function(k){encoded[k]=fields[k];});
@@ -59,7 +60,7 @@ function awgRequest(action,fields,loud){
  $.ajax({url:'/_api/',type:'POST',contentType:'application/json; charset=utf-8',cache:false,dataType:'text',timeout:90000,
  data:JSON.stringify({id:Math.floor(Math.random()*100000000),method:'amneziawg_api.sh',params:[action],fields:awgEncodeRequest(fields)}),
  success:function(r){try{
-  var v=awgDecodeResponse(r);
+  var v=awgDecodeResponse(r);if(v.core&&typeof awgCoreRender==='function')awgCoreRender(v.core);
   if(v.ok&&action==='settings')awgDirty=false;
   if(v.ok&&action==='server-save')awgServerDirty=false;
   if(v.server&&typeof awgServerRender==='function')awgServerRender(v.server);
@@ -79,13 +80,13 @@ function awgPollStatus(action,loud){
  var epoch=awgEpoch,token={action:action};awgPoll=token;
  var xhr=$.ajax({url:'/_api/',type:'POST',contentType:'application/json; charset=utf-8',dataType:'text',timeout:15000,cache:false,
  data:JSON.stringify({id:Math.floor(Math.random()*100000000),method:'amneziawg_api.sh',params:[action],fields:{}}),
- success:function(r){if(epoch!==awgEpoch)return;try{var v=awgDecodeResponse(r);if(!v.ok)throw Error();if(v.server&&typeof awgServerRender==='function')awgServerRender(v.server);if(v.status)awgRender(v.status);awgButtons();if(loud)awgMessage('状态已刷新',false);}catch(e){awgPollError(action);}},
+ success:function(r){if(epoch!==awgEpoch)return;try{var v=awgDecodeResponse(r);if(v.core&&typeof awgCoreRender==='function')awgCoreRender(v.core);if(!v.ok)throw Error();if(v.server&&typeof awgServerRender==='function')awgServerRender(v.server);if(v.status)awgRender(v.status);awgButtons();if(loud)awgMessage('状态已刷新',false);}catch(e){awgPollError(action);}},
  error:function(xhr,reason){if(epoch===awgEpoch&&reason!=='abort')awgPollError(action);},
  complete:function(){if(awgPoll===token)awgPoll=null;}});
  if(xhr&&xhr.abort)token.abort=function(){xhr.abort();};
 }
 function awgPollError(action){
- if(action==='server-status'&&typeof awgServer!=='undefined'){awgServer=null;awgEl('sv_status').textContent='状态读取失败';}else awgLastStatus=null;
+ if(action==='server-status'&&typeof awgServer!=='undefined'){awgServer=null;awgEl('sv_status').textContent='状态读取失败';}else if(action!=='core-status')awgLastStatus=null;
  awgMessage('状态读取失败；请刷新状态，或检查是否需要重新登录路由器。',true);awgButtons();
 }
 function awgAction(action){if(action==='up'&&awgDirty){awgMessage('请先保存运行设置。',true);return;}awgMessage(action==='up'?'正在启动并应用配置…':'正在停止并解除断线保护…',false);awgRequest(action,{},true);}

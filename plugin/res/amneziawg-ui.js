@@ -2,11 +2,11 @@
 var awgQueuedPage=null;
 var awgCurrentPage='server',awgEntryMode='form';
 function awgPage(page){
- if(['home','server','settings','import','logs'].indexOf(page)===-1)return;
+ if(['home','server','settings','import','logs','core'].indexOf(page)===-1)return;
  if(typeof awgConfigClose==='function')awgConfigClose();
  awgCurrentPage=page;
- ['home','server','settings','import','logs'].forEach(function(p){awgEl('page_'+p).hidden=p!==page;awgEl('nav_'+p).classList.toggle('active',p===page);if(p===page)awgEl('nav_'+p).setAttribute('aria-current','page');else awgEl('nav_'+p).removeAttribute('aria-current');});
- if(awgBusy)awgQueuedPage=page;else if(page==='logs')awgRequest('logs',{},true);else if(page==='server')awgPollStatus('server-status',false);else awgPollStatus('status',false);
+ ['home','server','settings','import','logs','core'].forEach(function(p){awgEl('page_'+p).hidden=p!==page;awgEl('nav_'+p).classList.toggle('active',p===page);if(p===page)awgEl('nav_'+p).setAttribute('aria-current','page');else awgEl('nav_'+p).removeAttribute('aria-current');});
+ if(awgBusy)awgQueuedPage=page;else if(page==='core')awgPollStatus('core-status',false);else if(page==='logs')awgRequest('logs',{},true);else if(page==='server')awgPollStatus('server-status',false);else awgPollStatus('status',false);
  window.scrollTo(0,0);
 }
 function awgImportMode(mode){awgEntryMode=mode;awgEl('awg_form_fields').hidden=mode!=='form';awgEl('awg_file_fields').hidden=mode!=='file';['form','file'].forEach(function(m){awgEl('method_'+m).classList.toggle('selected',m===mode);awgEl('method_'+m).setAttribute('aria-pressed',String(m===mode));});}

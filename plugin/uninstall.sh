@@ -9,6 +9,7 @@ has_tool() {
  done
  return 1
 }
+[ ! -f /koolshare/amneziawg/update-busy ] || { echo "核心更新或恢复尚未结束，取消卸载"; exit 1; }
 if [ -x /koolshare/bin/amneziawg-go ]; then
  if [ -f /tmp/amneziawg-asus/server-state.json ]; then
   /koolshare/bin/amneziawg-go ctl server-down || { echo "服务端清理失败，保留旧程序"; exit 1; }
@@ -26,6 +27,9 @@ if has_tool cru; then cru d amneziawg_watch; fi
 rm -f /koolshare/init.d/S95amneziawg.sh /koolshare/init.d/N95amneziawg.sh
 rm -f /koolshare/bin/amneziawg-go /koolshare/scripts/amneziawg_api.sh /koolshare/scripts/amneziawg_service.sh
 rm -f /koolshare/webs/Module_amneziawg.asp /koolshare/res/amneziawg.js /koolshare/res/icon-amneziawg.png
+rm -f /koolshare/bin/amneziawg-go.previous /koolshare/bin/amneziawg-go.candidate /koolshare/bin/amneziawg-go.restore
+rm -f /koolshare/amneziawg/plugin-version /koolshare/amneziawg/core-backup.json /koolshare/amneziawg/update-offer.json /koolshare/amneziawg/update-state.json
+rm -f /koolshare/res/amneziawg-core.js /koolshare/res/amneziawg-0.5.0.css
 rm -f /koolshare/res/amneziawg-qrcode.js /koolshare/res/amneziawg-config.js
 rm -f /koolshare/res/amneziawg-server.js /koolshare/res/amneziawg-logs.js /koolshare/res/amneziawg-ui.js /koolshare/res/amneziawg.css /koolshare/res/amneziawg-0.4.0.css
 rm -f /koolshare/res/amneziawg-icons/*.svg

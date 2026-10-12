@@ -22,7 +22,7 @@ func requestInput() io.Reader {
 
 func needsRequestBody(action string) bool {
 	switch action {
-	case "import", "settings", "switch", "delete", "server-save", "server-add", "server-delete", "server-enable", "server-disable", "server-export", "request-check":
+	case "core-upgrade", "core-rollback", "import", "settings", "switch", "delete", "server-save", "server-add", "server-delete", "server-enable", "server-disable", "server-export", "request-check":
 		return true
 	}
 	return false

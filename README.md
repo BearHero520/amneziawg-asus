@@ -1,12 +1,14 @@
 # AmneziaWG for ASUS
 
-面向 **华硕 RT-BE88U / ARM64 / ASUSGO（KoolCenter）软件中心** 的 AmneziaWG 客户端与服务端插件。当前版本 **0.4.0 测试版**，社区适配项目，非华硕或 Amnezia 官方插件。
+面向 **华硕 ASUSGO / KoolCenter 软件中心，分别提供 ARM64 与 ARMv7 包** 的 AmneziaWG 客户端与服务端插件。当前版本 **0.5.0 测试版**，社区适配项目，非华硕或 Amnezia 官方插件。
 
-[下载安装包](https://github.com/BearHero520/amneziawg-asus/releases/tag/v0.4.0) · [验证记录](docs/TESTING.md) · [反馈问题](https://github.com/BearHero520/amneziawg-asus/issues)
+[下载安装包](https://github.com/BearHero520/amneziawg-asus/releases/tag/v0.5.0) · [验证记录](docs/TESTING.md) · [反馈问题](https://github.com/BearHero520/amneziawg-asus/issues)
 
 ## 支持范围
 
-- 安装包目前只允许 `RT-BE88U`、`aarch64` 安装，不能当成全部华硕或梅林机型的通用包。
+- 不再限制 RT-BE88U 型号；ARM64 对应 `uname -m = aarch64`，ARMv7 对应 `armv7l`（GOARM=7）。软件中心包标记支持 HND，ARMv7 包另包含 arm384。
+- **不是所有华硕机型通用**：需要 Linux 3.2+、兼容的软件中心和网络命令。旧 ARMv7 / arm384 固件若为 Linux 2.6，会明确拒绝安装。其他 MTK / QCA / IPQ 软件中心平台尚未适配发布标记，不声称兼容。
+- 内核要求来自 [Go 官方最低运行要求](https://go.dev/wiki/MinimumRequirements)。安装时先检查架构、内核和核心能否运行，再写入插件。
 - 开发验证环境：`3.0.0.6.102_39256_koolcenter`，软件中心 `1.9.56`。
 - 需要固件提供软件中心、dbus、iproute2、iptables 和 TUN；IPv6 还需要 ip6tables/NAT66 与可用 IPv6 出口。
 - 固定上游 [amnezia-vpn/amneziawg-go](https://github.com/amnezia-vpn/amneziawg-go)，标签 `v3.1.20260828`，提交 `b5928efb6ca19f0153958460c3d141f04abc5c2e`。只增加 ASUS 管理入口和构建版本字符串，没有修改加密、握手、混淆实现。
@@ -28,6 +30,16 @@
 - 仅建立隧道或按局域网来源、AllowedIPs 分流；可选 IPv6。
 - DNS 接管、断线保护与探测失败后的备用节点切换，需满足页面提示的网络前提。
 
+### 核心在线更新
+
+- “核心更新”页手动检查本项目 GitHub 预览通道；不会定时自动安装。
+- 显示当前核心、架构、插件界面版本、可用版本、备份与任务进度；升级前确认短暂断线。
+- 固定 HTTPS 来源、SHA256、大小、ELF 架构和管理接口版本校验；更新清单一小时有效，并固定用户确认的目标版本。
+- 后台任务下载、验证、保留旧核心并原子切换；恢复原先运行的客户端/服务端，不更改配置、设备密钥或开机启动选择。
+- 新核心恢复失败时尝试自动回滚；也可手动回滚到本地备份。回滚失败会保留恢复状态并阻止冲突操作。
+- 需要路由器能访问 GitHub、时间与 CA 证书正常，以及暂存新核心的 JFFS 空间（另留 2 MB）。不会关闭 TLS 校验或使用任意镜像。
+- 只接受本项目适配核心，不能直接替换上游原始二进制。详细机制与恢复步骤见 [核心更新说明](docs/CORE-UPDATES.md)。
+
 ### 日志与诊断
 
 - 操作日志最多 200 条且不超过 64 KB，存于内存目录，路由器重启清空；支持复制/下载。
@@ -37,9 +49,9 @@
 
 ## 安装与使用
 
-1. 在 Releases 下载 `amneziawg_0.4.0_arm64.tar.gz`，可用附带的 `SHA256SUMS.txt` 校验。
+1. 在 Releases 按架构下载 `amneziawg_0.5.0_arm64.tar.gz` 或 `amneziawg_0.5.0_armv7.tar.gz`，可用附带的 `SHA256SUMS.txt` 校验。RT-BE88U 选 ARM64。
 2. 进入软件中心 → 离线安装，上传原始 `.tar.gz`，无需手动解压。
-3. 安装后打开插件，必要时 Ctrl+F5 刷新，确认显示 0.4.0。
+3. 安装后打开插件，必要时 Ctrl+F5 刷新，确认显示 0.5.0。
 4. 服务端首次配置：保存设置 → 添加设备 → 导出/扫码导入客户端配置 → 启动服务端。
 5. 使用外网设备验证回家连接；公网入站必须可达，DDNS 本身不能穿透运营商 NAT，上级路由可能需要转发 UDP 端口。
 
@@ -50,9 +62,9 @@
 ## 当前验证与限制
 
 - 已有版本的外网回家访问和路由器 DNS 解析有实机反馈。
-- 0.4.0 的 37 个顶层 Go 测试、前端回归、隔离 Shell 安装/卸载模拟和 ARM64 打包检查通过。
+- 0.5.0 管理层 Go 测试、前端回归、隔离 Shell 安装/卸载模拟及 ARM64 / ARMv7 交叉编译和打包检查通过，具体覆盖见验证记录。
 - 在本机官方引擎之间通过真实 UDP、模拟 TUN 验证：增删或禁用/启用另一设备后，原设备继续双向加密传输；目标设备从核心移除或恢复。
-- **0.4.0 新版尚未完成路由器实机热更新验收**，本机诊断通过也不等于远端 DNS、网站、公网端口或第三方代理分流已正常。
+- **0.5.0 新版尚未完成路由器实机热更新验收**，本机诊断通过也不等于远端 DNS、网站、公网端口或第三方代理分流已正常。
 - 不支持其他 VLAN/访客网自动开放、LAN 广播发现、设备间互访、服务端多实例或 `vpn://` 分享串。
 - LAN 访问使用 NAT；关闭 LAN 访问或启用客户端断线保护时，需按提示关闭 Flow Cache / Runner 硬件加速。
 - 未配置 IPv6 隧道时，导出全局路由仅覆盖 IPv4，远端设备原有 IPv6 不受保护。DNS 接管不识别应用自带 DoH。
@@ -67,7 +79,7 @@
 .\build.ps1
 ```
 
-脚本固定上游提交，复制 `src/asusctl` 管理层，运行测试，交叉编译 Linux ARM64 并生成离线安装包。产物位于 `dist/`。`-SkipTests` 仅供本地调试使用。独立 QR 解码器为可选发布 QA 依赖，未提供时不运行该附加解码检查。
+脚本固定上游提交，复制 `src/asusctl` 管理层，运行测试，交叉编译 Linux ARM64 与 ARMv7，并生成两份离线包、两份独立核心、更新清单与校验文件。产物位于 `dist/`。`-SkipTests` 仅供本地调试使用。独立 QR 解码器为可选发布 QA 依赖，未提供时不运行该附加解码检查。
 
 目录：`src/asusctl` 管理层；`plugin` 安装脚本和页面资源；`scripts` 打包与前端/Shell 测试；`docs` 验证说明。上游源码、构建二进制、本地配置和临时工作记录不纳入 Git。
 

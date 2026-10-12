@@ -17,7 +17,7 @@ $originalMain = (git -C $upstreamRoot show HEAD:main.go) -join "`n"
 if ($LASTEXITCODE -ne 0) { throw 'Cannot read upstream main.go' }
 $patched = $originalMain.Replace('"fmt"', '"fmt"' + "`n" + '"github.com/amnezia-vpn/amneziawg-go/v3/asusctl"').Replace('func main() {', 'func main() {' + "`n" + 'if asusctl.Run(os.Args) { return }')
 [IO.File]::WriteAllText((Join-Path $upstreamRoot 'main.go'), $patched, [Text.UTF8Encoding]::new($false))
-[IO.File]::WriteAllText((Join-Path $upstreamRoot 'version.go'), "package main`nconst Version = `"3.1.20260828-asus-0.4.0`"`n", [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $upstreamRoot 'version.go'), "package main`nconst Version = `"3.1.20260828-asus-0.5.0`"`n", [Text.UTF8Encoding]::new($false))
 if (!$SkipTests) {
  python (Join-Path $projectRoot 'scripts\test_shell_compat.py')
  if ($LASTEXITCODE -ne 0) { throw 'Shell compatibility tests failed' }
@@ -27,20 +27,25 @@ if (!$SkipTests) {
  if ($LASTEXITCODE -ne 0) { throw 'Guided form tests failed' }
  node (Join-Path $projectRoot 'scripts\test_config_view.js')
  if ($LASTEXITCODE -ne 0) { throw 'Configuration preview tests failed' }
+ node (Join-Path $projectRoot 'scripts\test_core_ui.js')
+ if ($LASTEXITCODE -ne 0) { throw 'Core update UI tests failed' }
  node (Join-Path $projectRoot 'scripts\test_hot_ui.js')
  if ($LASTEXITCODE -ne 0) { throw 'Hot peer UI tests failed' }
  node (Join-Path $projectRoot 'scripts\test_server_ui.js')
  if ($LASTEXITCODE -ne 0) { throw 'Server UI tests failed' }
 }
-$oldGOOS=$env:GOOS; $oldGOARCH=$env:GOARCH; $oldCGO=$env:CGO_ENABLED
+$oldGOOS=$env:GOOS; $oldGOARCH=$env:GOARCH; $oldCGO=$env:CGO_ENABLED; $oldGOARM=$env:GOARM
 Push-Location $upstreamRoot
 try {
  $env:GOOS='windows'; $env:GOARCH='amd64'; $env:CGO_ENABLED='0'
  if (!$SkipTests) { go test ./asusctl; if ($LASTEXITCODE -ne 0) { throw 'Tests failed' } }
- $env:GOOS='linux'; $env:GOARCH='arm64'
- New-Item -ItemType Directory -Path (Join-Path $projectRoot 'plugin\bin') -Force | Out-Null
- go build -trimpath -ldflags '-s -w -buildid=' -o (Join-Path $projectRoot 'plugin\bin\amneziawg-go') .
- if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
-} finally { Pop-Location; $env:GOOS=$oldGOOS; $env:GOARCH=$oldGOARCH; $env:CGO_ENABLED=$oldCGO }
+ $env:GOOS='linux'
+ New-Item -ItemType Directory -Path (Join-Path $projectRoot 'work\cores') -Force | Out-Null
+ foreach ($arch in @('arm64','armv7')) {
+  $env:GOARCH=if ($arch -eq 'armv7') {'arm'} else {'arm64'}; $env:GOARM='7'
+  go build -trimpath -ldflags '-s -w -buildid=' -o (Join-Path $projectRoot "work\cores\$arch") .
+  if ($LASTEXITCODE -ne 0) { throw "Build failed: $arch" }
+ }
+} finally { Pop-Location; $env:GOOS=$oldGOOS; $env:GOARCH=$oldGOARCH; $env:GOARM=$oldGOARM; $env:CGO_ENABLED=$oldCGO }
 python (Join-Path $projectRoot 'scripts\package.py')
 if ($LASTEXITCODE -ne 0) { throw 'Packaging failed' }

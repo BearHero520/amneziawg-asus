@@ -28,7 +28,7 @@ def write(path, text):
     path.chmod(0o755)
 
 
-def check_case(with_cru=True, missing_dbus=False):
+def check_case(with_cru=True, missing_dbus=False, arch="arm64", machine="aarch64", kernel="5.4.0", rejected=""):
     with tempfile.TemporaryDirectory(prefix='awg-shell-') as temp:
         root = Path(temp)
         ks = root / 'koolshare'
@@ -41,6 +41,7 @@ def check_case(with_cru=True, missing_dbus=False):
         dns_add = root / 'jffs/configs/dnsmasq.conf.add'
         write(dns_add, '# existing user DNS config\nserver=/example.test/192.168.50.9\n')
         shutil.copytree(ROOT / 'plugin', package)
+        write(package / 'package-arch', arch+'\n')
         write(ks / 'scripts/base.sh', '# mock softcenter\n')
         # Rewrite ONLY filesystem roots and executable search directories.
         # All lifecycle logic is the real shipped script.
@@ -55,7 +56,7 @@ def check_case(with_cru=True, missing_dbus=False):
             write(script, text)
         def fake(name, body):
             write(mock / name, '#!/bin/sh\n' + body + '\n')
-        fake('uname', 'echo aarch64')
+        fake('uname', f'[ \"$1\" = -r ] && echo {kernel} || echo {machine}')
         fake('nvram', 'echo RT-BE88U')
         fake('df', "printf 'Filesystem 1K-blocks Used Available Use%% Mounted\\nmock 99999 0 99999 0 /\\n'")
         for name in ('ip', 'iptables'):
@@ -75,6 +76,11 @@ def check_case(with_cru=True, missing_dbus=False):
         disabled = subprocess.run([str(BASH), '-c', 'command -v dbus'], env=env, capture_output=True)
         assert disabled.returncode == 127, 'command builtin must be unavailable'
         result = run(package / 'install.sh')
+        if rejected:
+            assert result.returncode != 0 and rejected in result.stdout, result
+            assert not (ks / "bin/amneziawg-go").exists()
+            print("PASS rejected " + rejected)
+            return
         if missing_dbus:
             assert result.returncode != 0 and '缺少 dbus' in result.stdout, result
             assert not (ks / 'bin/amneziawg-go').exists()
@@ -119,14 +125,14 @@ def check_case(with_cru=True, missing_dbus=False):
             value = json.loads(response.stdout)['result']
             assert value.startswith('AWG64:')
             return json.loads(base64.b64decode(value[6:]))
-        for action in ('status','server-enable','server-disable','logs','diagnose'):
+        for action in ('status','server-enable','server-disable','logs','diagnose','core-status','core-check','core-upgrade','core-rollback'):
             assert api_response(action) == {'ok': True, 'message': '状态已刷新'}, action
         assert api_response('unknown')['ok'] is False
         write(core, '#!/bin/sh\nexit 1\n')
         assert api_response('status')['ok'] is False
         write(core, original_core)
         calls = log.read_text(encoding='utf-8')
-        for call in ('ctl boot', 'ctl recover', 'ctl down', 'ctl server-boot', 'ctl server-recover', 'ctl server-down', 'softcenter_module_amneziawg_version=0.4.0'):
+        for call in ('ctl boot', 'ctl recover', 'ctl down', 'ctl server-boot', 'ctl server-recover', 'ctl server-down', 'softcenter_module_amneziawg_version=0.5.0'):
             assert call in calls, call
         assert ('cru a amneziawg_watch' in calls) == with_cru
         result = run(ks / 'scripts/uninstall_amneziawg.sh')
@@ -143,3 +149,7 @@ if __name__ == '__main__':
     check_case()
     check_case(with_cru=False)
     check_case(missing_dbus=True)
+
+    check_case(arch="armv7", machine="armv7l")
+    check_case(arch="armv7", rejected="架构不匹配")
+    check_case(kernel="2.6.36", rejected="Linux 3.2")
