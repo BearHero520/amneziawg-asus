@@ -1,0 +1,6 @@
+/upstream/
+/work/
+/dist/
+/plugin/bin/
+*.conf
+!examples/*.conf.example
