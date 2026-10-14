@@ -1,16 +1,16 @@
 {
-  "version": "0.5.0",
+  "version": "0.5.1",
   "series": "0.5",
   "abi": 1,
   "assets": {
     "arm64": {
-      "url": "https://github.com/BearHero520/amneziawg-asus/releases/download/v0.5.0/amneziawg-core_0.5.0_arm64",
-      "sha256": "6153bc2e658785b63eac3da63a79f06d828a1dd92125f61c61e846a992e18401",
+      "url": "https://github.com/BearHero520/amneziawg-asus/releases/download/v0.5.1/amneziawg-core_0.5.1_arm64",
+      "sha256": "e0c4ab938039398dde05aa0460b9a6fa64e98a9f1479e23ae85655f5e034f307",
       "size": 6881428
     },
     "armv7": {
-      "url": "https://github.com/BearHero520/amneziawg-asus/releases/download/v0.5.0/amneziawg-core_0.5.0_armv7",
-      "sha256": "75e876ba48bae51d642203fdb887bfbec4a889a2dba2a1075543aecbbe1fc43a",
+      "url": "https://github.com/BearHero520/amneziawg-asus/releases/download/v0.5.1/amneziawg-core_0.5.1_armv7",
+      "sha256": "469330ad270f036de541d20e4d51af934a1598721ead35b0f8039cc40df96303",
       "size": 7143572
     }
   }
