@@ -36,7 +36,7 @@ chmod 700 /koolshare/amneziawg /koolshare/amneziawg/config
 cp "$DIR/bin/amneziawg-go" /koolshare/bin/amneziawg-go.new
 chmod 755 /koolshare/bin/amneziawg-go.new
 mv /koolshare/bin/amneziawg-go.new /koolshare/bin/amneziawg-go
-printf '%s\n' '0.5.0' > /koolshare/amneziawg/plugin-version
+printf '%s\n' '0.5.1' > /koolshare/amneziawg/plugin-version
 rm -f /koolshare/bin/amneziawg-go.previous /koolshare/amneziawg/core-backup.json /koolshare/amneziawg/update-offer.json /koolshare/amneziawg/update-state.json
 cp "$DIR/scripts/amneziawg_api.sh" /koolshare/scripts/amneziawg_api.sh
 cp "$DIR/scripts/amneziawg_service.sh" /koolshare/scripts/amneziawg_service.sh
@@ -79,8 +79,8 @@ if ! grep -q '^# BEGIN AMNEZIAWG DNS$' "$DNS_ADD" 2>/dev/null; then
  mv "$DNS_ADD.awg-new" "$DNS_ADD"
  if has_tool service; then service restart_dnsmasq; fi
 fi
-dbus set amneziawg_version=0.5.0
-dbus set softcenter_module_amneziawg_version=0.5.0
+dbus set amneziawg_version=0.5.1
+dbus set softcenter_module_amneziawg_version=0.5.1
 dbus set softcenter_module_amneziawg_install=1
 dbus set softcenter_module_amneziawg_name=amneziawg
 dbus set softcenter_module_amneziawg_title=AmneziaWG

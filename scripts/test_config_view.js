@@ -1,5 +1,11 @@
 // Local synthetic data only; no router keys or external QR service.
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
+// ASUS loads RequireJS before our plain script. Never enqueue an anonymous AMD module.
+let amdCalls=0;const amd={define(){amdCalls++;}};amd.define.amd={};vm.createContext(amd);
+vm.runInContext(fs.readFileSync('plugin/res/amneziawg-qrcode.js','utf8'),amd);
+assert.equal(amdCalls,0);assert.equal(typeof amd.qrcode,'function');
+assert.equal(typeof require('../plugin/res/amneziawg-qrcode.js'),'function');
+console.log('PASS ASUS RequireJS coexistence and CommonJS export');
 const nodes=new Map();let pixels,focused,copied,downloaded;
 function el(id){if(!nodes.has(id))nodes.set(id,{hidden:true,value:'',width:0,height:0,disabled:false,isConnected:true,focus(){focused=this;},select(){},setSelectionRange(){},getContext(){const c=this;pixels=new Uint8ClampedArray(c.width*c.height*4);return {fillStyle:'#fff',fillRect(x,y,w,h){const v=this.fillStyle==='#fff'?255:0;for(let r=y;r<y+h;r++)for(let col=x;col<x+w;col++){let i=(r*c.width+col)*4;pixels[i]=pixels[i+1]=pixels[i+2]=v;pixels[i+3]=255;}}};}});return nodes.get(id);}
 const c={console,window:{addEventListener(){}},document:{body:{style:{overflow:'auto'}},execCommand(){copied=el('sv_config_text').value;return true;}},awgEl:el,awgBusy:false,awgServerDirty:false,awgMessage(){},awgServerAction(){},awgServerDownload(v){downloaded=v.export;v.export='';}};

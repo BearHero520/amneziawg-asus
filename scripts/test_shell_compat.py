@@ -132,7 +132,7 @@ def check_case(with_cru=True, missing_dbus=False, arch="arm64", machine="aarch64
         assert api_response('status')['ok'] is False
         write(core, original_core)
         calls = log.read_text(encoding='utf-8')
-        for call in ('ctl boot', 'ctl recover', 'ctl down', 'ctl server-boot', 'ctl server-recover', 'ctl server-down', 'softcenter_module_amneziawg_version=0.5.0'):
+        for call in ('ctl boot', 'ctl recover', 'ctl down', 'ctl server-boot', 'ctl server-recover', 'ctl server-down', 'softcenter_module_amneziawg_version=0.5.1'):
             assert call in calls, call
         assert ('cru a amneziawg_watch' in calls) == with_cru
         result = run(ks / 'scripts/uninstall_amneziawg.sh')

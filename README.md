@@ -1,8 +1,14 @@
 # AmneziaWG for ASUS
 
-面向 **华硕 ASUSGO / KoolCenter 软件中心，分别提供 ARM64 与 ARMv7 包** 的 AmneziaWG 客户端与服务端插件。当前版本 **0.5.0 测试版**，社区适配项目，非华硕或 Amnezia 官方插件。
+面向 **华硕 ASUSGO / KoolCenter 软件中心，分别提供 ARM64 与 ARMv7 包** 的 AmneziaWG 客户端与服务端插件。当前版本 **0.5.1 测试版**，社区适配项目，非华硕或 Amnezia 官方插件。
 
-[下载安装包](https://github.com/BearHero520/amneziawg-asus/releases/tag/v0.5.0) · [验证记录](docs/TESTING.md) · [反馈问题](https://github.com/BearHero520/amneziawg-asus/issues)
+[下载安装包](https://github.com/BearHero520/amneziawg-asus/releases/tag/v0.5.1) · [验证记录](docs/TESTING.md) · [反馈问题](https://github.com/BearHero520/amneziawg-asus/issues)
+
+## 0.5.1 网页兼容修复
+
+修复二维码库通过普通 script 标签加载时向华硕 RequireJS 注册匿名模块的问题，避免 `Mismatched anonymous define()` 干扰页面初始化。已在 RT-BE88U 的 0.4.0 页面热修复后确认自动读取服务端状态、菜单和流量恢复显示，VPN 无需重启。
+
+**此修复必须更新完整插件包；仅使用“核心在线升级”不会替换网页脚本。** 安装后 Ctrl+F5 刷新。此项实机确认不代表 0.5.1 全部功能或 ARMv7 已完成实机验收。
 
 ## 支持范围
 
@@ -49,9 +55,9 @@
 
 ## 安装与使用
 
-1. 在 Releases 按架构下载 `amneziawg_0.5.0_arm64.tar.gz` 或 `amneziawg_0.5.0_armv7.tar.gz`，可用附带的 `SHA256SUMS.txt` 校验。RT-BE88U 选 ARM64。
+1. 在 Releases 按架构下载 `amneziawg_0.5.1_arm64.tar.gz` 或 `amneziawg_0.5.1_armv7.tar.gz`，可用附带的 `SHA256SUMS.txt` 校验。RT-BE88U 选 ARM64。
 2. 进入软件中心 → 离线安装，上传原始 `.tar.gz`，无需手动解压。
-3. 安装后打开插件，必要时 Ctrl+F5 刷新，确认显示 0.5.0。
+3. 安装后打开插件，必要时 Ctrl+F5 刷新，确认显示 0.5.1。
 4. 服务端首次配置：保存设置 → 添加设备 → 导出/扫码导入客户端配置 → 启动服务端。
 5. 使用外网设备验证回家连接；公网入站必须可达，DDNS 本身不能穿透运营商 NAT，上级路由可能需要转发 UDP 端口。
 
@@ -62,9 +68,9 @@
 ## 当前验证与限制
 
 - 已有版本的外网回家访问和路由器 DNS 解析有实机反馈。
-- 0.5.0 管理层 Go 测试、前端回归、隔离 Shell 安装/卸载模拟及 ARM64 / ARMv7 交叉编译和打包检查通过，具体覆盖见验证记录。
+- 0.5.1 管理层 Go 测试、前端回归、隔离 Shell 安装/卸载模拟及 ARM64 / ARMv7 交叉编译和打包检查通过，具体覆盖见验证记录。
 - 在本机官方引擎之间通过真实 UDP、模拟 TUN 验证：增删或禁用/启用另一设备后，原设备继续双向加密传输；目标设备从核心移除或恢复。
-- **0.5.0 新版尚未完成路由器实机热更新验收**，本机诊断通过也不等于远端 DNS、网站、公网端口或第三方代理分流已正常。
+- **0.5.1 新版尚未完成路由器实机热更新验收**，本机诊断通过也不等于远端 DNS、网站、公网端口或第三方代理分流已正常。
 - 不支持其他 VLAN/访客网自动开放、LAN 广播发现、设备间互访、服务端多实例或 `vpn://` 分享串。
 - LAN 访问使用 NAT；关闭 LAN 访问或启用客户端断线保护时，需按提示关闭 Flow Cache / Runner 硬件加速。
 - 未配置 IPv6 隧道时，导出全局路由仅覆盖 IPv4，远端设备原有 IPv6 不受保护。DNS 接管不识别应用自带 DoH。

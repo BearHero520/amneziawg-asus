@@ -2287,9 +2287,10 @@ var qrcode = function() {
 }();
 
 (function (factory) {
-  if (typeof define === 'function' && define.amd) {
-      define([], factory);
-  } else if (typeof exports === 'object') {
+  // Loaded by a plain script tag in ASUS httpd. Registering an anonymous AMD
+  // module here poisons the firmware's RequireJS queue (mismatched define).
+  // Keep the browser global above and CommonJS for the standalone QR tests.
+  if (typeof module === 'object' && module.exports) {
       module.exports = factory();
   }
 }(function () {
