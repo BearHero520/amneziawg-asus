@@ -25,7 +25,7 @@ type Diagnostic struct {
 
 var operationNames = map[string]string{
 	"core-upgrade": "核心升级", "core-rollback": "核心回滚",
-	"server-save": "保存服务端设置", "server-add": "添加设备", "server-delete": "删除设备", "server-enable": "启用设备", "server-disable": "禁用设备",
+	"server-service-stop": "固件暂停服务端", "server-save": "保存服务端设置", "server-add": "添加设备", "server-delete": "删除设备", "server-enable": "启用设备", "server-disable": "禁用设备",
 	"server-up": "启动服务端", "server-down": "停止服务端", "server-boot": "服务端开机启动", "server-recover": "恢复服务端",
 	"import": "导入客户端配置", "settings": "保存客户端设置", "switch": "切换客户端节点", "delete": "删除客户端节点", "up": "启动客户端", "down": "停止客户端", "boot": "客户端开机启动", "recover": "恢复客户端",
 }
@@ -52,12 +52,15 @@ func recordOperation(action string, ok bool) {
 	if !known {
 		return
 	}
-	entries := readLogs()
 	message := "操作成功"
 	if !ok {
 		message = "操作失败；请结合页面错误提示和诊断检查"
 	}
-	entries = append(entries, LogEntry{time.Now().Unix(), name, ok, message})
+	appendOperation(name, ok, message)
+}
+func appendOperation(name string, ok bool, message string) {
+	entries := readLogs()
+	entries = append(entries, LogEntry{time.Now().Unix(), name, ok, safeFailure(message)})
 	if len(entries) > 200 {
 		entries = entries[len(entries)-200:]
 	}

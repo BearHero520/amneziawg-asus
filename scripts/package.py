@@ -1,6 +1,6 @@
 """Deterministic dual architecture packages, core assets and update manifest."""
 import re,gzip,hashlib,io,json,pathlib,struct,tarfile
-root=pathlib.Path(__file__).resolve().parents[1];plugin=root/'plugin';version='0.5.1'
+root=pathlib.Path(__file__).resolve().parents[1];plugin=root/'plugin';version='0.5.2'
 html=(plugin/'webs/Module_amneziawg.asp').read_text(encoding='utf-8')
 for url in re.findall(r'(?:href|src)="(/res/[^\"]+)"',html):
  if url=='/res/softcenter.css':continue

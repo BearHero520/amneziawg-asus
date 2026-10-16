@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-const pluginVersion = "0.5.1"
+const pluginVersion = "0.5.2"
 const coreABI = 1
 const coreSeries = "0.5"
 const coreFeed = "https://raw.githubusercontent.com/BearHero520/amneziawg-asus/main/updates/preview.json"

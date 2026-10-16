@@ -8,15 +8,15 @@ function awgServerButtons(){
  awgEl('sv_endpoint').disabled=locked||awgEl('sv_endpoint_mode').value==='auto';
  awgEl('sv_save').disabled=locked;awgEl('sv_add').disabled=peerLocked||!awgServer.configured||awgServer.clients.length>=10;awgEl('sv_name').disabled=peerLocked;
  awgEl('sv_start').disabled=awgBusy||!awgServer||!!active||!awgServer.configured||!awgServer.clients.some(function(p){return !p.disabled;});
- awgEl('sv_stop').disabled=awgBusy||!active;
+ awgEl('sv_stop').disabled=awgBusy||(!active&&!(awgServer&&awgServer.wanted));
  awgEl('sv_add').textContent=awgBusy&&awgPendingAction==='server-add'?'添加中…':'添加设备';
  awgEl('sv_start').textContent=awgBusy&&awgPendingAction==='server-up'?'启动中…':'启动服务端';
- awgEl('sv_stop').textContent=awgBusy&&awgPendingAction==='server-down'?'停止中…':'停止服务端';
+ awgEl('sv_stop').textContent=awgBusy&&awgPendingAction==='server-down'?'停止中…':awgServer&&awgServer.recovering?'停止并取消重试':'停止服务端';
  document.querySelectorAll('[data-server-delete], [data-server-enable], [data-server-disable]').forEach(function(b){b.disabled=peerLocked;});
  document.querySelectorAll('[data-server-export], [data-server-view]').forEach(function(b){b.disabled=awgBusy;});
 }
 function awgServerRender(s){
- awgServer=s;awgEl('sv_status').textContent=s.pending?'运行异常 / 设备变更待处理':s.running?'服务端已启动':'服务端已停止';
+ awgServer=s;awgEl('sv_status').textContent=s.pending?'运行异常 / 设备变更待处理':s.recovering?'恢复失败 / 等待自动重试':s.running?'服务端已启动':'服务端已停止';
  awgEl('sv_status').className='awg-state'+(s.running?' connected':'');
  awgEl('sv_ddns').textContent=s.ddns||'尚未设置 DDNS';awgEl('sv_detected').textContent=s.endpoint||'未获取到可用地址';
  awgEl('sv_lan').textContent=s.lan||'未识别';awgEl('sv_warning').textContent=s.warning||'';awgEl('sv_public').textContent=s.public||'首次保存后自动生成';

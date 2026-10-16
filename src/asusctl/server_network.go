@@ -117,7 +117,10 @@ func serverTransaction(state *State, step serverStep) error {
 		return e
 	}
 	_, e := runCommand(step.Do.Name, step.Do.Args...)
-	return e
+	if e != nil {
+		return fmt.Errorf("网络步骤 %s %s: %w", step.Do.Name, strings.Join(step.Do.Args, " "), e)
+	}
+	return nil
 }
 func serverDown() error {
 	b, e := os.ReadFile(serverStatePath)
@@ -152,7 +155,7 @@ func serverDown() error {
 		out, e := runCommand(c.Name, c.Args...)
 		if e != nil && !missingResource(out) {
 			failed = append([]Command{c}, failed...)
-			errs = append(errs, e.Error())
+			errs = append(errs, fmt.Sprintf("清理步骤 %s %s: %v", c.Name, strings.Join(c.Args, " "), e))
 		}
 	}
 	if len(errs) > 0 {
@@ -390,26 +393,15 @@ func executeServer(action string) (Result, error) {
 			}
 		}
 	case "server-up":
-		e = serverUp()
+		e = manualServerStart()
 	case "server-down":
-		e = serverDown()
+		e = manualServerStop()
+	case "server-service-stop":
+		e = suspendServer()
 	case "server-boot":
-		c, ce := readServer()
-		if ce == nil && c.Settings.Auto {
-			if exists(serverStatePath) {
-				e = serverDown()
-			}
-			if e == nil {
-				e = serverUp()
-			}
-		}
+		e = bootServer()
 	case "server-recover":
-		if exists(serverStatePath) {
-			e = serverDown()
-			if e == nil {
-				e = serverUp()
-			}
-		}
+		e = superviseServer(false)
 	default:
 		return Result{}, errors.New("未知服务端操作")
 	}

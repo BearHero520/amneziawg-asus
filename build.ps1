@@ -17,7 +17,7 @@ $originalMain = (git -C $upstreamRoot show HEAD:main.go) -join "`n"
 if ($LASTEXITCODE -ne 0) { throw 'Cannot read upstream main.go' }
 $patched = $originalMain.Replace('"fmt"', '"fmt"' + "`n" + '"github.com/amnezia-vpn/amneziawg-go/v3/asusctl"').Replace('func main() {', 'func main() {' + "`n" + 'if asusctl.Run(os.Args) { return }')
 [IO.File]::WriteAllText((Join-Path $upstreamRoot 'main.go'), $patched, [Text.UTF8Encoding]::new($false))
-[IO.File]::WriteAllText((Join-Path $upstreamRoot 'version.go'), "package main`nconst Version = `"3.1.20260828-asus-0.5.1`"`n", [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $upstreamRoot 'version.go'), "package main`nconst Version = `"3.1.20260828-asus-0.5.2`"`n", [Text.UTF8Encoding]::new($false))
 if (!$SkipTests) {
  python (Join-Path $projectRoot 'scripts\test_shell_compat.py')
  if ($LASTEXITCODE -ne 0) { throw 'Shell compatibility tests failed' }

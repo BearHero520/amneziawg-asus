@@ -64,6 +64,8 @@ type ServerClientView struct {
 	TX        uint64 `json:"tx"`
 }
 type ServerStatus struct {
+	Wanted     bool               `json:"wanted"`
+	Recovering bool               `json:"recovering"`
 	Configured bool               `json:"configured"`
 	Running    bool               `json:"running"`
 	Pending    bool               `json:"pending"`
@@ -377,6 +379,17 @@ func serverStatus() ServerStatus {
 	}
 	if lan, e := defaultLAN(); e == nil {
 		v.LAN = lan.String()
+	}
+	var intent ServerIntent
+	if loadJSONFile(serverIntentPath(), &intent) == nil && intent.Boot == bootID() {
+		v.Wanted = intent.Wanted
+	}
+	v.Recovering = v.Wanted && serverRetry().Failures > 0
+	if note := serverRecoveryNote(); note != "" {
+		if v.Warning != "" {
+			v.Warning += "；"
+		}
+		v.Warning += note
 	}
 	stats := map[string]ServerClientView{}
 	if exists(serverStatePath) {

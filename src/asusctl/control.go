@@ -517,6 +517,11 @@ func lock() (func(), error) {
 	return func() { _ = os.Remove(p) }, nil
 }
 func execute(action string) (result Result, err error) {
+	if action == "server-recover" {
+		if e := queueServerRecovery(); e != nil {
+			return Result{}, e
+		}
+	}
 	if action == "core-info" || action == "core-status" {
 		return executeCore(action)
 	}
@@ -547,7 +552,19 @@ func execute(action string) (result Result, err error) {
 	if strings.HasPrefix(action, "core-") {
 		return executeCore(action)
 	}
-	defer func() { recordOperation(action, err == nil) }()
+	defer func() {
+		if action == "server-boot" || action == "server-recover" {
+			if err != nil {
+				appendOperation("服务端恢复入口", false, safeFailure(err.Error()))
+			}
+			return
+		}
+		if err != nil && (action == "server-up" || action == "server-down") {
+			appendOperation(operationNames[action], false, err.Error())
+		} else {
+			recordOperation(action, err == nil)
+		}
+	}()
 	if strings.HasPrefix(action, "server-") {
 		return executeServer(action)
 	}
@@ -574,7 +591,7 @@ func execute(action string) (result Result, err error) {
 			return Result{}, e
 		}
 	case "watch":
-		if e = watch(); e != nil {
+		if e = errors.Join(superviseServer(false), watch()); e != nil {
 			return Result{}, e
 		}
 	case "settings":

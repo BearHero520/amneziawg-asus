@@ -27,6 +27,6 @@ case "${1:-}" in
   ;;
  stop|kill)
   /koolshare/bin/amneziawg-go ctl down >/dev/null 2>&1
-  /koolshare/bin/amneziawg-go ctl server-down >/dev/null 2>&1
+  /koolshare/bin/amneziawg-go ctl server-service-stop >/dev/null 2>&1
   ;;
 esac
