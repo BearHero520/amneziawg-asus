@@ -20,6 +20,20 @@
 
 .app-shell #awg_logs{box-sizing:border-box;width:100%;font:12px/1.7 monospace;resize:vertical;min-height:180px}.diagnostic-pass{color:#83d8b6}.diagnostic-fail{color:#ff9898}.diagnostic-warn{color:#f4d191}.app-shell .peer-table td:last-child button{margin:3px 3px 3px 0}.app-shell .app-nav{flex-wrap:wrap}
 
+
 #page_logs .peer-table th:first-child{width:115px}#page_logs .peer-table th:nth-child(2){width:65px}#page_logs .peer-table td:nth-child(2){white-space:nowrap}
 
 .awg-panel #core_confirmation{padding:0 16px 16px}.awg-panel #core_confirmation .form-actions{padding-left:0;padding-bottom:0}
+
+.awg-panel .device-add { flex-wrap: wrap; }
+.awg-panel .device-add input { min-width: 150px; }
+.awg-panel .server-devices select { min-width: 106px; padding: 4px 6px; }
+.awg-panel .server-devices td:nth-child(5) input { margin: 0; }
+.awg-panel .server-device-actions { display: flex; flex-direction: column; align-items: flex-start; }
+.awg-panel .table-wrap { overflow-x: auto; }
+.awg-panel .policy-options { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px 16px; margin: 12px 0; }
+.awg-panel .policy-options label { display: grid; gap: 6px; align-content: start; }
+.awg-panel .policy-options label:has(input[type=checkbox]) { display: flex; align-items: center; }
+.awg-panel .policy-options input:not([type=checkbox]), .awg-panel .policy-options select, .awg-panel .policy-options textarea { width: 100%; box-sizing: border-box; }
+.awg-panel .policy-rule { margin: 8px 0; }
+.awg-panel #awg_policy { padding: 0 16px; }

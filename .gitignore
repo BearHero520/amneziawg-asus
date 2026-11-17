@@ -4,3 +4,4 @@
 /plugin/bin/
 *.conf
 !examples/*.conf.example
+__pycache__/

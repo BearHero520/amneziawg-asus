@@ -2,8 +2,8 @@
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Cache-Control" content="no-store">
 <title>ASUS Wireless Router - AmneziaWG</title><link rel="stylesheet" href="/index_style.css"><link rel="stylesheet" href="/form_style.css"><link rel="stylesheet" href="/res/softcenter.css"><script src="/js/jquery.js"></script><script src="/js/httpApi.js"></script><script src="/require/require.min.js"></script><script src="/state.js"></script><script src="/general.js"></script><script src="/popup.js"></script><script src="/help.js"></script><link rel="stylesheet" href="/res/amneziawg-0.5.0.css"></head>
 <body onload="awgInitial()"><div id="TopBanner"></div><div id="Loading" class="popup_bg"></div><table class="content" align="center" cellpadding="0" cellspacing="0"><tr><td width="17" valign="top"></td><td width="202" valign="top"><div id="mainMenu"></div><div id="subMenu"></div></td><td valign="top"><div style="margin-top:-140px"><div id="tabMenu"></div><div class="app-shell awg-panel">
-<header class="app-header"><div><h1>AmneziaWG</h1><p>客户端连接远端 · 服务端安全回家</p></div><div class="header-actions"><span class="device-label">ASUS <span class="version">0.5.2</span></span><a class="back-softcenter" href="/Module_Softcenter.asp"><img src="/res/amneziawg-icons/arrow-left.svg" alt="">返回软件中心</a></div></header>
-<nav class="app-nav" aria-label="插件导航"><button id="nav_home" class="nav-item" onclick="awgPage('home')">客户端</button><button id="nav_server" class="nav-item active" aria-current="page" onclick="awgPage('server')">服务端</button><button id="nav_import" class="nav-item" onclick="awgPage('import')">添加节点</button><button id="nav_settings" class="nav-item" onclick="awgPage('settings')">客户端设置</button><button id="nav_logs" class="nav-item" onclick="awgPage('logs')">日志与诊断</button><button id="nav_core" class="nav-item" onclick="awgPage('core')">核心更新</button></nav>
+<header class="app-header"><div><h1>AmneziaWG</h1><p>客户端连接远端 · 服务端安全回家</p></div><div class="header-actions"><span class="device-label">ASUS <span class="version">0.5.5</span></span><a class="back-softcenter" href="/Module_Softcenter.asp"><img src="/res/amneziawg-icons/arrow-left.svg" alt="">返回软件中心</a></div></header>
+<nav class="app-nav" aria-label="插件导航"><button id="nav_home" class="nav-item" onclick="awgPage('home')">客户端</button><button id="nav_server" class="nav-item active" aria-current="page" onclick="awgPage('server')">服务端</button><button id="nav_import" class="nav-item" onclick="awgPage('import')">添加节点</button><button id="nav_settings" class="nav-item" onclick="awgPage('settings')">客户端设置</button><button id="nav_logs" class="nav-item" onclick="awgPage('logs')">日志与诊断</button><button id="nav_core" class="nav-item" onclick="awgPage('core')">在线更新</button></nav>
 <div id="awg_message" aria-live="polite"></div>
 <main>
 <section id="page_home" hidden aria-label="连接概览"><div class="home-grid">
@@ -31,13 +31,58 @@
 <details class="advanced"><summary>高级设置<span>IPv6 · DNS · 混淆参数 · 公钥</span></summary><table class="settings-table"><tbody>
 <tr><th><label for="sv_address6">IPv6 隧道地址</label></th><td><input id="sv_address6" placeholder="留空禁用，例如 fd77:77::1/64"><div class="awg-note">使用 ULA /64；IPv6 上网采用 NAT66，需要固件支持。添加设备前确定地址范围。</div></td></tr>
 <tr><th>兼容 fullv 上网</th><td><label><input id="sv_fullv" type="checkbox">让浏览器回退到 TCP</label><div class="awg-note">通过家里上网时拒绝公网 UDP 443（QUIC），让浏览器改用 TCP。不改 fullv 节点与分流规则；需已启用 fullv。修改后重新启动服务端生效。</div></td></tr>
-<tr><th><label for="sv_dns">客户端 DNS</label></th><td><input id="sv_dns" placeholder="如 1.1.1.1，多个用逗号分隔"><div class="awg-note">全局上网且允许访问局域网时，留空使用路由器 LAN 地址作为 DNS；禁止局域网时默认 1.1.1.1。仅回家时留空不改 DNS。自定义 DNS 必须位于允许访问的范围。</div></td></tr>
+<tr><th><label for="sv_dns">客户端 DNS</label></th><td><input id="sv_dns" placeholder="如 1.1.1.1，多个用逗号分隔"><label class="switch-label"><input type="checkbox" id="sv_keep_client_dns"> 沿用设备自己的 DNS</label><div class="awg-note">全局上网且允许访问局域网时，留空使用路由器 LAN 地址作为 DNS；禁止局域网时默认 1.1.1.1。仅回家时留空沿用设备 DNS。</div></td></tr>
+<tr><th><label for="sv_keep_lan_source">LAN 来源地址</label></th><td><label class="switch-label"><input type="checkbox" id="sv_keep_lan_source"> 保留接入设备的 VPN 地址</label><div class="awg-note">启用后，家庭设备须能经此路由器返回 VPN 网段。</div></td></tr>
 <tr><th><label for="sv_extra">AmneziaWG 参数</label></th><td><textarea id="sv_extra" rows="7" spellcheck="false" placeholder="首次保存时自动生成，通常无需修改"></textarea><div class="awg-note">修改参数后需重新导出所有设备配置。</div></td></tr>
 <tr><th>服务端公钥</th><td><code id="sv_public">首次保存后自动生成</code></td></tr></tbody></table></details>
 <div class="form-actions"><button class="primary" id="sv_save" onclick="awgServerSave()">保存设置</button><button class="primary" id="sv_start" onclick="awgServerAction('server-up')">启动服务端</button><button id="sv_stop" onclick="awgServerAction('server-down')">停止服务端</button><button onclick="awgServerAction('server-status')">刷新</button></div></div>
-<div class="form-card client-devices"><h3 class="form-caption">VPN 设备 <span id="sv_count">0 / 10</span></h3><div class="device-add"><input id="sv_name" maxlength="40" placeholder="设备名称，例如：我的手机" aria-label="新设备名称"><button class="primary" id="sv_add" onclick="awgServerAction('server-add',{name:awgEl('sv_name').value.trim()})">添加设备</button></div><div class="table-scroll"><table class="peer-table"><thead><tr><th>设备</th><th>隧道地址</th><th>状态 / 最近握手</th><th>接收 / 发送</th><th>操作</th></tr></thead><tbody id="sv_clients"></tbody></table></div><p id="sv_empty" class="muted">还没有设备。保存设置后，填写名称即可生成密钥和配置。</p><p class="awg-note">运行中可添加、删除、禁用或启用设备，仅影响目标设备。禁用保留原配置，重新启用后无需重新导入；删除后原配置失效。修改服务端设置仍需先停止。导出的 .conf 含该设备私钥，请妥善保管。</p></div>
+<div class="form-card client-devices">
+ <h3 class="form-caption">接入设备 <span id="sv_count">0 / 10</span></h3>
+ <div class="device-add">
+  <input id="sv_name" maxlength="40" placeholder="设备名称，例如：我的手机" aria-label="新设备名称">
+  <button class="primary" id="sv_add" onclick="awgServerAction('server-add',{name:awgEl('sv_name').value.trim()})">添加设备</button>
+  <button id="sv_import_legacy" hidden onclick="awgServerAction('server-import-legacy')">导入旧版设备</button>
+ </div>
+ <div class="table-scroll">
+  <table class="peer-table server-devices">
+   <thead><tr><th>设备</th><th>VPN 地址</th><th>访问范围</th><th>家庭出口</th><th>启用</th><th>最近握手</th><th>接收 / 发送</th><th>连接配置</th></tr></thead>
+   <tbody id="sv_clients"></tbody>
+  </table>
+ </div>
+ <p id="sv_empty" class="muted">保存服务端设置后即可添加设备。</p>
+ <p id="sv_egress_note" class="awg-note" hidden></p>
+ <p class="awg-note">出口设置会应用到新连接。修改访问范围后重新扫码或导入配置。设备配置含有私钥，请妥善保管。</p>
+</div>
 </section>
-<section id="page_settings" hidden><div class="page-heading"><div class="eyebrow">PREFERENCES</div><h1>连接设置</h1><p>先建立隧道，再选择哪些设备通过它访问网络。</p></div><div class="form-card"><table class="settings-table"><tbody><tr><th><label for="awg_mode">流量模式</label></th><td><select id="awg_mode"><option value="tunnel">仅建立隧道（默认）</option><option value="lan">局域网按 AllowedIPs 分流</option></select></td></tr><tr><th><label for="awg_source">来源设备 / 网段</label></th><td><input id="awg_source" type="text" placeholder="留空表示主 LAN 网段" autocomplete="off"><div class="awg-note">单台设备填写 192.168.50.100/32；需位于主 LAN 网段内。</div></td></tr><tr><th><label for="awg_auto">开机自动连接</label></th><td><label><input id="awg_auto" type="checkbox"> 启用</label></td></tr></tbody></table><details class="advanced"><summary>高级设置<span>IPv6 · DNS · 断线保护 · 故障切换</span></summary><table class="settings-table"><tbody><tr><th><label for="awg_ipv6">IPv6 双栈分流</label></th><td><label><input id="awg_ipv6" type="checkbox"> 同时接管 IPv6（需要服务器支持 IPv6）</label></td></tr><tr><th><label for="awg_source6">IPv6 来源设备 / 网段</label></th><td><input id="awg_source6" type="text" placeholder="留空自动识别唯一的 LAN IPv6 网段" style="width:360px"><div class="awg-note">单台设备可用 /128；存在多个 IPv6 前缀时请明确填写。</div></td></tr><tr><th><label for="awg_dns_on">自动接管 DNS</label></th><td><label><input id="awg_dns_on" type="checkbox"> 接管所选 LAN 设备的 TCP / UDP 53 请求</label><div class="awg-note">使用配置中每种地址族的第一个 DNS，并强制经隧道路由。阻止 853 端口；不识别应用自带的 DoH。</div></td></tr><tr><th>配置中的 DNS</th><td><span id="awg_dns">未配置</span></td></tr><tr><th><label for="awg_kill">断线保护</label></th><td><label><input id="awg_kill" type="checkbox"> 隧道异常时阻止所选设备直连外网</label><div class="awg-note">保留 LAN 管理访问。需要关闭路由器 Flow Cache / Runner 硬件加速，并同时开启 DNS 接管；LAN 有 IPv6 时也必须开启双栈。点击“停止并恢复直连”才解除保护。</div></td></tr><tr><th><label for="awg_failover">自动故障切换</label></th><td><label><input id="awg_failover" type="checkbox"> 连续 3 轮探测失败后尝试备用节点</label><div class="awg-note">每分钟检测，至少间隔 3 分钟切换。需要断线保护和备用配置；依赖路由器 cron。</div></td></tr><tr><th><label for="awg_fallbacks">备用节点</label></th><td><select id="awg_fallbacks" multiple size="4" style="min-width:260px"></select><div class="awg-note">按列表顺序尝试；按住 Ctrl 可多选。</div></td></tr><tr><th><label for="awg_targets">连通性探测 IP</label></th><td><input id="awg_targets" type="text" style="width:330px" placeholder="1.1.1.1, 9.9.9.9"><div class="awg-note">最多 3 个，以逗号分隔。须在每个节点 AllowedIPs 内，并能响应 ICMP；任一成功即视为健康。</div></td></tr></tbody></table></details><div class="awg-controls"><button class="primary" id="awg_save" onclick="awgSave()">保存设置</button><span class="awg-note">停止并恢复直连后可修改运行设置。</span></div>
+<section id="page_settings" hidden><div class="page-heading"><div class="eyebrow">PREFERENCES</div><h1>连接设置</h1><p>先建立隧道，再选择哪些设备通过它访问网络。</p></div><div class="form-card"><table class="settings-table"><tbody><tr><th><label for="awg_mode">流量模式</label></th><td><select id="awg_mode"><option value="tunnel">仅建立隧道（默认）</option><option value="lan">局域网按 AllowedIPs 分流</option><option value="policy">按设备和规则分流</option></select></td></tr><tr id="awg_source_row"><th><label for="awg_source">来源设备 / 网段</label></th><td><input id="awg_source" type="text" placeholder="留空表示主 LAN 网段" autocomplete="off"><div class="awg-note">单台设备填写 192.168.50.100/32；需位于主 LAN 网段内。</div></td></tr><tr><th><label for="awg_auto">开机自动连接</label></th><td><label><input id="awg_auto" type="checkbox"> 启用</label></td></tr></tbody></table><details class="advanced" id="awg_lan_settings"><summary>高级设置<span>IPv6 · DNS · 断线保护 · 故障切换</span></summary><table class="settings-table"><tbody><tr><th><label for="awg_ipv6">IPv6 双栈分流</label></th><td><label><input id="awg_ipv6" type="checkbox"> 同时接管 IPv6（需要服务器支持 IPv6）</label></td></tr><tr><th><label for="awg_source6">IPv6 来源设备 / 网段</label></th><td><input id="awg_source6" type="text" placeholder="留空自动识别唯一的 LAN IPv6 网段" style="width:360px"><div class="awg-note">单台设备可用 /128；存在多个 IPv6 前缀时请明确填写。</div></td></tr><tr><th><label for="awg_dns_on">自动接管 DNS</label></th><td><label><input id="awg_dns_on" type="checkbox"> 接管所选 LAN 设备的 TCP / UDP 53 请求</label><div class="awg-note">使用配置中每种地址族的第一个 DNS，并强制经隧道路由。阻止 853 端口；不识别应用自带的 DoH。</div></td></tr><tr><th>配置中的 DNS</th><td><span id="awg_dns">未配置</span></td></tr><tr><th><label for="awg_kill">断线保护</label></th><td><label><input id="awg_kill" type="checkbox"> 隧道异常时阻止所选设备直连外网</label><div class="awg-note">保留 LAN 管理访问。需要关闭路由器 Flow Cache / Runner 硬件加速，并同时开启 DNS 接管；LAN 有 IPv6 时也必须开启双栈。点击“停止并恢复直连”才解除保护。</div></td></tr><tr><th><label for="awg_failover">自动故障切换</label></th><td><label><input id="awg_failover" type="checkbox"> 连续 3 轮探测失败后尝试备用节点</label><div class="awg-note">每分钟检测，至少间隔 3 分钟切换。需要断线保护和备用配置；依赖路由器 cron。</div></td></tr><tr><th><label for="awg_fallbacks">备用节点</label></th><td><select id="awg_fallbacks" multiple size="4" style="min-width:260px"></select><div class="awg-note">按列表顺序尝试；按住 Ctrl 可多选。</div></td></tr><tr><th><label for="awg_targets">连通性探测 IP</label></th><td><input id="awg_targets" type="text" style="width:330px" placeholder="1.1.1.1, 9.9.9.9"><div class="awg-note">最多 3 个，以逗号分隔。须在每个节点 AllowedIPs 内，并能响应 ICMP；任一成功即视为健康。</div></td></tr></tbody></table></details><div id="awg_policy" hidden>
+ <div class="policy-options">
+  <label>未单独设置的设备<select id="awg_policy_default" data-policy-edit></select></label>
+  <label>DNS<select id="awg_policy_dns" data-policy-edit><option value="router">沿用路由器 DNS</option><option value="intercept">接管设备的 53 端口 DNS</option><option value="tunnel">使用节点的隧道 DNS</option></select></label>
+  <label><input type="checkbox" id="awg_policy_ipv4" data-policy-edit> 停用 LAN 到外网的 IPv6 转发</label>
+  <label><input type="checkbox" id="awg_policy_guard" data-policy-edit> 隧道异常时阻断已分流的 IPv4 流量</label>
+  <label><input type="checkbox" id="awg_policy_auto" data-policy-edit> 每天更新规则列表</label>
+ </div>
+ <p class="awg-note">此模式按 IPv4 分流。域名规则通过路由器 DNS 学习地址。接管 DNS 时，使用自带 DoH 的应用仍需单独设置。</p>
+ <details class="advanced" open><summary>局域网设备分流</summary>
+  <div class="table-wrap"><table class="peer-table"><thead><tr><th>IPv4 或 MAC 地址</th><th>流量去向</th><th>操作</th></tr></thead><tbody id="awg_policy_devices"></tbody></table></div>
+  <button type="button" id="awg_policy_add_device" data-policy-edit onclick="awgPolicyAddDevice()">添加局域网设备</button>
+ </details>
+ <details class="advanced"><summary>分流规则</summary>
+  <div id="awg_policy_rules"></div>
+  <button type="button" id="awg_policy_add_rule" data-policy-edit onclick="awgPolicyAddRule()">添加规则</button>
+  <button type="button" id="awg_policy_refresh" onclick="awgRequest('routing-refresh',{},true)">更新规则列表</button>
+  <p id="awg_policy_list_status" class="awg-note" role="status"></p>
+ </details>
+ <details class="advanced" id="awg_traffic" ontoggle="awgTrafficToggle()"><summary>流量分析</summary>
+  <div class="awg-controls"><label for="awg_traffic_device">设备 IPv4</label><input id="awg_traffic_device" placeholder="192.168.50.100">
+   <button type="button" id="awg_traffic_start" onclick="awgTrafficStart()">开始分析</button><button type="button" id="awg_traffic_stop" onclick="awgRequest('traffic-stop',{},true)">停止分析</button>
+  </div>
+  <p id="awg_traffic_state" class="awg-note" role="status">每次最多分析 10 分钟。</p>
+  <label for="awg_traffic_rule">把结果加入规则</label><select id="awg_traffic_rule"></select>
+  <p class="awg-note">停止客户端后可以编辑和保存规则。</p>
+  <div class="table-wrap"><table class="peer-table"><thead><tr><th>时间</th><th>域名 / 地址</th><th>协议</th><th>策略判定</th><th>操作</th></tr></thead><tbody id="awg_traffic_rows"></tbody></table></div>
+ </details>
+</div><div class="awg-controls"><button class="primary" id="awg_save" onclick="awgSave()">保存设置</button><span class="awg-note">停止并恢复直连后可修改运行设置。</span></div>
 <p class="awg-note">LAN 模式保留主路由表中的内网和已有特定路由。保护范围仅限所选来源网段，路由器自身发起的流量不在接管范围。若未启用双栈，IPv6 保持原有路由。与 fancyss 等插件共用策略路由可能冲突，请先用单台设备测试。</p>
 </div></section>
 <section id="page_import" hidden><div class="page-heading"><div class="eyebrow">NEW CONNECTION</div><h1>添加一个节点</h1><p>像配置 WireGuard 一样填写信息，或直接导入服务端提供的文件。</p></div>
@@ -57,19 +102,29 @@
 <div class="form-actions"><button id="awg_import" class="primary" onclick="awgImport()">保存节点</button><button class="text-button" onclick="awgClearImport()">清空输入</button><span class="muted">私钥只保存在路由器本地</span></div><p class="awg-note">保存后返回首页连接。不执行配置中的脚本钩子；不支持 vpn:// 分享串。</p></div></section>
 <section id="page_logs" hidden><div class="page-heading"><h1>日志与诊断</h1><p>查看操作结果，排查回家连接与 DNS 问题。</p></div>
 <div class="form-card"><h3 class="form-caption">操作日志</h3><p class="awg-note">仅记录本次路由器开机后的插件操作，最多 200 条 / 64 KB，保存在内存目录；重启后清空。不记录私钥、预共享密钥或配置内容。</p><textarea id="awg_logs" readonly rows="10" aria-label="操作日志" spellcheck="false">点击刷新日志读取记录。</textarea><div class="form-actions"><button onclick="awgRequest('logs',{},true)">刷新日志</button><button data-local onclick="awgLogsCopy()">复制日志与诊断</button><button data-local onclick="awgLogsDownload()">下载报告</button></div></div>
-<div class="form-card"><h3 class="form-caption">连接诊断</h3><p class="awg-note">检查服务端核心、设备变更、策略路由、防火墙、NAT 和 DNS。只读取状态，不重启服务。结果仅代表路由器本机检查，外网设备仍需实际测试。</p><div class="form-actions"><button class="primary" id="awg_diagnose" onclick="awgRequest('diagnose',{},true)">开始诊断</button><span id="awg_diag_time" class="awg-note" role="status">尚未检查</span></div><div class="table-scroll"><table class="peer-table"><thead><tr><th>检查项</th><th>结果</th><th>说明</th></tr></thead><tbody id="awg_diagnostics"></tbody></table></div></div></section><section id="page_core" hidden><div class="page-heading"><h1>核心更新</h1><p>检查本项目发布的适配核心，由你决定何时升级。</p></div>
-<div class="form-card"><h3 class="form-caption">版本信息</h3><table class="settings-table"><tbody>
-<tr><th>当前核心</th><td id="core_current">正在读取…</td></tr><tr><th>插件界面版本</th><td id="core_plugin">0.5.2</td></tr>
-<tr><th>最新适配核心</th><td id="core_latest">尚未检查</td></tr><tr><th>上次检查</th><td id="core_checked">尚未检查</td></tr><tr><th>可回滚版本</th><td id="core_backup">尚无备份</td></tr>
-</tbody></table><p class="awg-note">更新源：BearHero520/amneziawg-asus · 预览通道。不会自动安装，也不会上传配置与密钥。核心更新不替代完整插件升级。</p>
-<div class="form-actions"><button id="core_check" class="primary" onclick="awgRequest('core-check',{},true)">检查更新</button><button id="core_upgrade" onclick="awgCoreAsk('core-upgrade')" disabled>手动升级</button><button id="core_rollback" onclick="awgCoreAsk('core-rollback')" disabled>回滚到备份</button><button data-local onclick="awgPollStatus('core-status',true)">刷新状态</button></div></div>
+<div class="form-card"><h3 class="form-caption">连接诊断</h3><p class="awg-note">检查服务端核心、设备变更、策略路由、防火墙、NAT 和 DNS。只读取状态，不重启服务。结果仅代表路由器本机检查，外网设备仍需实际测试。</p><div class="form-actions"><button class="primary" id="awg_diagnose" onclick="awgRequest('diagnose',{},true)">开始诊断</button><span id="awg_diag_time" class="awg-note" role="status">尚未检查</span></div><div class="table-scroll"><table class="peer-table"><thead><tr><th>检查项</th><th>结果</th><th>说明</th></tr></thead><tbody id="awg_diagnostics"></tbody></table></div></div></section>
+<section id="page_core" hidden><div class="page-heading"><h1>在线更新</h1></div>
+<div class="form-card"><h3 class="form-caption">完整插件</h3><table class="settings-table"><tbody>
+<tr><th>当前插件</th><td id="core_plugin">0.5.5</td></tr>
+<tr><th>最新插件</th><td id="plugin_latest" aria-live="polite">尚未检查</td></tr>
+<tr><th>上次检查</th><td id="core_checked">尚未检查</td></tr>
+<tr id="plugin_checksum_row" hidden><th>安装包 SHA-256</th><td><code id="plugin_checksum"></code></td></tr>
+</tbody></table>
+<div class="form-actions"><button id="core_check" class="primary" onclick="awgRequest('core-check',{},true)">检查在线更新</button><a id="plugin_download" target="_blank" rel="noopener noreferrer" hidden>下载离线包</a><a href="https://github.com/BearHero520/amneziawg-asus/releases" target="_blank" rel="noopener noreferrer">发布记录</a></div>
+<p class="awg-note">检查 GitHub 预览通道。下载完整安装包后，在软件中心进行离线安装。</p></div>
+<div class="form-card"><h3 class="form-caption">适配核心</h3><table class="settings-table"><tbody>
+<tr><th>当前核心</th><td id="core_current">正在读取…</td></tr>
+<tr><th>最新核心</th><td id="core_latest">尚未检查</td></tr>
+<tr><th>可回滚版本</th><td id="core_backup">尚无备份</td></tr>
+</tbody></table>
+<div class="form-actions"><button id="core_upgrade" onclick="awgCoreAsk('core-upgrade')" disabled>更新核心</button><button id="core_rollback" onclick="awgCoreAsk('core-rollback')" disabled>回滚到备份</button><button data-local onclick="awgPollStatus('core-status',true)">刷新状态</button></div></div>
 <div class="form-card"><h3 class="form-caption">更新状态</h3><p id="core_progress" class="awg-note" role="status" aria-live="polite">正在读取状态…</p><p class="awg-note">先校验下载、架构与兼容性，再备份和切换；启动失败时自动尝试恢复旧核心。如果通过此 VPN 远程管理路由器，切换时页面可能暂时失联，请稍后重新连接并刷新状态。</p>
 <div id="core_confirmation" hidden><p id="core_confirm_text"></p><label class="field"><span><input id="core_ack" type="checkbox" onchange="awgCoreButtons()">我了解 VPN 将短暂断开，已安排好维护时间</span></label><div class="form-actions"><button id="core_confirm" class="primary" onclick="awgCoreConfirm()" disabled>确认执行</button><button data-local onclick="awgCoreCancel()">取消</button></div></div>
-</div></section></main><footer class="app-footer"><span>AmneziaWG for ASUS</span><span>社区适配插件 · ARM64 / ARMv7 · 0.5.2</span></footer></div></div></td></tr></table><div id="footer"></div>
+</div></section></main><footer class="app-footer"><span>AmneziaWG for ASUS · 作者 <a href="https://github.com/BearHero520" target="_blank" rel="noopener noreferrer">BearHero520</a></span><span>社区适配插件 · ARM64 / ARMv7 · 0.5.5</span></footer></div></div></td></tr></table><div id="footer"></div>
 <div id="sv_config_modal" class="awg-panel config-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="sv_config_title" onkeydown="awgConfigKey(event)">
 <div class="config-dialog"><div class="config-heading"><h2 id="sv_config_title">设备配置</h2><button id="sv_config_close" data-config-local onclick="awgConfigClose()" aria-label="关闭配置">关闭</button></div>
 <p class="config-warning">配置含设备私钥，请勿分享给他人。二维码仅在本地生成。</p>
 <div class="config-columns"><div class="config-scan"><canvas id="sv_config_qr" role="img" aria-label="设备配置二维码"></canvas><p id="sv_config_qr_note">使用支持 AmneziaWG 的客户端扫码导入</p></div>
 <div class="config-text"><label for="sv_config_text">完整配置</label><textarea id="sv_config_text" readonly spellcheck="false" autocomplete="off" aria-label="完整设备配置"></textarea></div></div>
 <div class="config-actions"><button id="sv_config_copy" data-config-local class="primary" onclick="awgConfigCopy()">复制配置</button><button data-config-local onclick="awgConfigDownload()">下载 .conf</button><span id="sv_config_feedback" role="status" aria-live="polite"></span></div></div></div>
-<script src="/res/amneziawg.js?v=0.5.2"></script><script src="/res/amneziawg-ui.js?v=0.5.2"></script><script src="/res/amneziawg-server.js?v=0.5.2"></script><script src="/res/amneziawg-logs.js?v=0.5.2"></script><script src="/res/amneziawg-core.js?v=0.5.2"></script><script src="/res/amneziawg-qrcode.js?v=0.5.2"></script><script src="/res/amneziawg-config.js?v=0.5.2"></script></body></html>
+<script src="/res/amneziawg.js?v=0.5.5"></script><script src="/res/amneziawg-ui.js?v=0.5.5"></script><script src="/res/amneziawg-server.js?v=0.5.5"></script><script src="/res/amneziawg-routing.js?v=0.5.5"></script><script src="/res/amneziawg-logs.js?v=0.5.5"></script><script src="/res/amneziawg-core.js?v=0.5.5"></script><script src="/res/amneziawg-qrcode.js?v=0.5.5"></script><script src="/res/amneziawg-config.js?v=0.5.5"></script></body></html>

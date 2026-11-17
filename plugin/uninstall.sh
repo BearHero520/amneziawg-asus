@@ -16,6 +16,14 @@ if [ -x /koolshare/bin/amneziawg-go ]; then
  fi
  /koolshare/bin/amneziawg-go ctl down || { echo '网络规则清理失败，保留插件以便恢复'; exit 1; }
 fi
+if [ -x /koolshare/amneziawg/advanced/manage.sh ]; then
+ /bin/sh /koolshare/amneziawg/advanced/manage.sh uninstall || { echo '旧版独立服务清理失败，保留插件'; exit 1; }
+fi
+if [ -r /koolshare/amneziawg/policy/install-hook.sh ]; then
+ /bin/sh /koolshare/amneziawg/policy/install-hook.sh uninstall
+ rm -f /koolshare/amneziawg/policy/*.sh
+ rmdir /koolshare/amneziawg/policy 2>/dev/null || :
+fi
 # Remove only the plugin-owned dnsmasq block.
 DNS_ADD=/jffs/configs/dnsmasq.conf.add
 if [ -f "$DNS_ADD" ] && grep -q '^# BEGIN AMNEZIAWG DNS$' "$DNS_ADD"; then
@@ -31,7 +39,7 @@ rm -f /koolshare/bin/amneziawg-go.previous /koolshare/bin/amneziawg-go.candidate
 rm -f /koolshare/amneziawg/plugin-version /koolshare/amneziawg/core-backup.json /koolshare/amneziawg/update-offer.json /koolshare/amneziawg/update-state.json
 rm -f /koolshare/res/amneziawg-core.js /koolshare/res/amneziawg-0.5.0.css
 rm -f /koolshare/res/amneziawg-qrcode.js /koolshare/res/amneziawg-config.js
-rm -f /koolshare/res/amneziawg-server.js /koolshare/res/amneziawg-logs.js /koolshare/res/amneziawg-ui.js /koolshare/res/amneziawg.css /koolshare/res/amneziawg-0.4.0.css
+rm -f /koolshare/res/amneziawg-server.js /koolshare/res/amneziawg-routing.js /koolshare/res/amneziawg-logs.js /koolshare/res/amneziawg-ui.js /koolshare/res/amneziawg.css /koolshare/res/amneziawg-0.4.0.css
 rm -f /koolshare/res/amneziawg-icons/*.svg
 rmdir /koolshare/res/amneziawg-icons 2>/dev/null || true
 for key in version install name title description home_url; do dbus remove "softcenter_module_amneziawg_$key"; done

@@ -9,7 +9,8 @@ function awgInitial(){
  if(typeof show_menu==='function')show_menu(menu_hook);
  awgFields.forEach(function(id){awgEl(id).addEventListener('change',function(){awgDirty=true;});awgEl(id).addEventListener('input',function(){awgDirty=true;});});
  if(typeof awgServerInitial==='function')awgServerInitial();
- awgPage('server');awgTimer=setInterval(function(){if(!awgBusy&&awgCurrentPage!=='logs')awgPollStatus((awgCurrentPage==='core'||(typeof awgCore!=='undefined'&&awgCore&&awgCore.busy))?'core-status':awgCurrentPage==='server'?'server-status':'status',false);},10000);
+ if(typeof awgPolicyInitial==='function')awgPolicyInitial();
+ awgPage('server');awgTimer=setInterval(function(){if(!awgBusy&&awgCurrentPage!=='logs')awgPollStatus((awgCurrentPage==='core'||(typeof awgCore!=='undefined'&&awgCore&&awgCore.busy))?'core-status':awgCurrentPage==='server'?'server-status':awgCurrentPage==='settings'&&awgEl('awg_traffic')&&awgEl('awg_traffic').open?'traffic-status':'status',false);},10000);
 }
 function awgButtons(){
  var running=awgLastStatus&&awgLastStatus.running, protectedNow=awgLastStatus&&(awgLastStatus.protected||awgLastStatus.guard_pending);
@@ -23,6 +24,7 @@ function awgButtons(){
  if(typeof awgUIButtons==='function')awgUIButtons();
  if(typeof awgServerButtons==='function')awgServerButtons();
  if(typeof awgCoreButtons==='function')awgCoreButtons();
+ if(typeof awgPolicyButtons==='function')awgPolicyButtons();
 }
 // Softcenter wraps http_response in a quoted result without escaping its contents.
 // New backends return ASCII base64; also read the raw wrapper used by 0.1.1.
@@ -67,6 +69,7 @@ function awgRequest(action,fields,loud){
   if(v.ok&&action==='server-add')awgEl('sv_name').value='';
   if(v.ok&&v.export){if(typeof awgConfigResult==='function')awgConfigResult(v);else if(typeof awgServerDownload==='function')awgServerDownload(v);}
   if(typeof awgLogsRender==='function')awgLogsRender(v,action);
+  if(v.traffic&&typeof awgTrafficRender==='function')awgTrafficRender(v.traffic);
   if(v.status)awgRender(v.status);if(loud||!v.ok)awgMessage(v.message,!v.ok);
   if(v.ok&&action==='import'){awgEl('awg_config').value='';awgEl('awg_file').value='';awgEl('awg_name').value='';if(typeof awgClearImport==='function'){awgClearImport();awgPage('home');}}
  }catch(e){awgResponseError('无法读取插件响应，请刷新或检查安装。');}},
@@ -80,7 +83,7 @@ function awgPollStatus(action,loud){
  var epoch=awgEpoch,token={action:action};awgPoll=token;
  var xhr=$.ajax({url:'/_api/',type:'POST',contentType:'application/json; charset=utf-8',dataType:'text',timeout:15000,cache:false,
  data:JSON.stringify({id:Math.floor(Math.random()*100000000),method:'amneziawg_api.sh',params:[action],fields:{}}),
- success:function(r){if(epoch!==awgEpoch)return;try{var v=awgDecodeResponse(r);if(v.core&&typeof awgCoreRender==='function')awgCoreRender(v.core);if(!v.ok)throw Error();if(v.server&&typeof awgServerRender==='function')awgServerRender(v.server);if(v.status)awgRender(v.status);awgButtons();if(loud)awgMessage('状态已刷新',false);}catch(e){awgPollError(action);}},
+ success:function(r){if(epoch!==awgEpoch)return;try{var v=awgDecodeResponse(r);if(v.core&&typeof awgCoreRender==='function')awgCoreRender(v.core);if(!v.ok)throw Error();if(v.server&&typeof awgServerRender==='function')awgServerRender(v.server);if(v.status)awgRender(v.status);if(v.traffic&&typeof awgTrafficRender==='function')awgTrafficRender(v.traffic);awgButtons();if(loud)awgMessage('状态已刷新',false);}catch(e){awgPollError(action);}},
  error:function(xhr,reason){if(epoch===awgEpoch&&reason!=='abort')awgPollError(action);},
  complete:function(){if(awgPoll===token)awgPoll=null;}});
  if(xhr&&xhr.abort)token.abort=function(){xhr.abort();};
@@ -97,6 +100,8 @@ function awgSave(){
  ipv6:awgEl('awg_ipv6').checked,source6:awgEl('awg_source6').value.trim(),dns:awgEl('awg_dns_on').checked,
  kill_switch:awgEl('awg_kill').checked,failover:awgEl('awg_failover').checked,fallbacks:awgSelected('awg_fallbacks'),
  health_targets:awgEl('awg_targets').value.split(',').map(function(v){return v.trim();}).filter(Boolean),profile:awgLastStatus.settings.profile||''};
+ if(typeof awgPolicyRead==='function')s.routing=awgPolicyRead();
+ if(s.mode==='policy'){s.ipv6=false;s.dns=false;s.kill_switch=false;s.failover=false;}
  awgRequest('settings',{amneziawg_payload:JSON.stringify(s)},true);
 }
 function awgSwitch(){if(awgDirty){awgMessage('请先保存运行设置，再切换节点。',true);return;}awgRequest('switch',{amneziawg_payload:JSON.stringify({profile:awgEl('awg_profile').value})},true);}
@@ -121,5 +126,6 @@ function awgRender(s){
  }
  var body=awgEl('awg_peers');body.textContent='';(s.peers||[]).forEach(function(p){var tr=document.createElement('tr');[p.endpoint||'未设置 Endpoint',p.handshake?new Date(p.handshake*1000).toLocaleString():'尚未握手',awgBytes(p.rx)+' / '+awgBytes(p.tx)].forEach(function(text){var td=document.createElement('td');td.textContent=text;tr.appendChild(td);});body.appendChild(tr);});
  awgEl('awg_peer_empty').style.display=(s.peers||[]).length?'none':'block';
+ if(typeof awgPolicyRender==='function')awgPolicyRender(s);
  if(typeof awgUIRender==='function')awgUIRender(s);
 }

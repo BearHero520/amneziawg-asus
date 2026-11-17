@@ -1,7 +1,7 @@
 'use strict';
 const fs=require('fs'),vm=require('vm'),assert=require('assert'),path=require('path');
 const nodes=new Map();let downloaded,revoked,blob;
-function el(id){if(!nodes.has(id))nodes.set(id,{id,value:'',checked:false,type:['auto','allow_lan','internet','fullv'].some(k=>id==='sv_'+k)?'checkbox':'text',disabled:false});return nodes.get(id);}
+function el(id){if(!nodes.has(id))nodes.set(id,{id,value:'',checked:false,type:['auto','allow_lan','internet','fullv','keep_client_dns','keep_lan_source'].some(k=>id==='sv_'+k)?'checkbox':'text',disabled:false});return nodes.get(id);}
 const context={document:{getElementById:el,querySelectorAll:()=>[],body:{appendChild(){}},createElement:()=>({click(){downloaded={name:this.download,url:this.href};},remove(){}})},Blob:class{constructor(parts){blob=parts.join('');}},URL:{createObjectURL:()=> 'blob:test',revokeObjectURL:u=>revoked=u},setTimeout:fn=>fn(),console};vm.createContext(context);
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../plugin/res/amneziawg-server.js'),'utf8'),context);
 context.awgEl=el;context.awgBusy=false;context.awgMessage=()=>{};

@@ -3,7 +3,10 @@ package asusctl
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -36,6 +39,69 @@ func TestCoreManifestTrust(t *testing.T) {
 	}
 	if !trustedCoreURL("https://release-assets.githubusercontent.com/x") {
 		t.Fatal("valid redirect rejected")
+	}
+}
+
+type updateCheckTransport func(*http.Request) (*http.Response, error)
+
+func (f updateCheckTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestOnlineCheckOffersFullPluginSeparatelyFromCore(t *testing.T) {
+	oldRoot, oldArch, oldVersion, oldHTTP := updateRoot, coreArch, coreVersion, coreHTTP
+	t.Cleanup(func() {
+		updateRoot, coreArch, coreVersion, coreHTTP = oldRoot, oldArch, oldVersion, oldHTTP
+	})
+	updateRoot = t.TempDir()
+	coreArch = func() string { return "arm64" }
+	coreVersion = "0.5.6"
+	if err := os.WriteFile(updateFile("plugin-version"), []byte("0.5.5\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m := testManifest()
+	m.Version = "0.5.6"
+	m.Assets["arm64"] = CoreAsset{
+		URL: coreReleaseBase + "0.5.6/amneziawg-core_0.5.6_arm64", SHA256: strings.Repeat("a", 64), Size: 2048,
+	}
+	pkg := CoreAsset{
+		URL: coreReleaseBase + "0.5.6/amneziawg_0.5.6_arm64.tar.gz", SHA256: strings.Repeat("b", 64), Size: 4096,
+	}
+	m.Packages = map[string]CoreAsset{"arm64": pkg}
+	requests := 0
+	coreHTTP = &http.Client{Transport: updateCheckTransport(func(r *http.Request) (*http.Response, error) {
+		requests++
+		if r.URL.String() != coreFeed || r.Method != http.MethodGet {
+			t.Fatalf("unexpected update request: %s %s", r.Method, r.URL)
+		}
+		body, err := json.Marshal(m)
+		if err != nil {
+			return nil, err
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(string(body)))}, nil
+	})}
+	if err := checkCore(); err != nil {
+		t.Fatal(err)
+	}
+	s := coreStatus()
+	if requests != 1 || s.Checked == 0 || s.Available || s.Release == nil || !s.Release.Available ||
+		s.Release.Package == nil || *s.Release.Package != pkg {
+		t.Fatalf("expected a complete package when the core is already current: %+v", s)
+	}
+	m.ABI++
+	if err := checkCore(); err != nil {
+		t.Fatal("an incompatible core should still offer the full plugin", err)
+	}
+	s = coreStatus()
+	if s.Latest != "" || s.Available || s.Release == nil || s.Release.Package == nil {
+		t.Fatalf("expected a package-only upgrade: %+v", s)
+	}
+	m.ABI = coreABI
+	pkg.URL = "https://example.org/amneziawg_0.5.6_arm64.tar.gz"
+	m.Packages["arm64"] = pkg
+	if err := checkCore(); err != nil {
+		t.Fatal("the valid core should still be recognized", err)
+	}
+	if s = coreStatus(); s.Release == nil || s.Release.Package != nil {
+		t.Fatal("an untrusted package URL was offered")
 	}
 }
 func TestCoreVersionOrdering(t *testing.T) {

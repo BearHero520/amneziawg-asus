@@ -24,27 +24,30 @@ var serverSocket = "/var/run/amneziawg/awgs0.sock"
 const serverInterface = "awgs0"
 
 type ServerSettings struct {
-	Port         int    `json:"port"`
-	Address      string `json:"address"`
-	Address6     string `json:"address6"`
-	EndpointMode string `json:"endpoint_mode"`
-	Endpoint     string `json:"endpoint"`
-	Auto         bool   `json:"auto"`
-	AllowLAN     bool   `json:"allow_lan"`
-	Internet     bool   `json:"internet"`
-	Fullv        bool   `json:"fullv"`
-	DNS          string `json:"dns"`
-	Extra        string `json:"extra"`
+	Port          int    `json:"port"`
+	Address       string `json:"address"`
+	Address6      string `json:"address6"`
+	EndpointMode  string `json:"endpoint_mode"`
+	Endpoint      string `json:"endpoint"`
+	Auto          bool   `json:"auto"`
+	AllowLAN      bool   `json:"allow_lan"`
+	KeepLANSource bool   `json:"keep_lan_source,omitempty"`
+	Internet      bool   `json:"internet"`
+	Fullv         bool   `json:"fullv"`
+	DNS           string `json:"dns"`
+	KeepClientDNS bool   `json:"keep_client_dns,omitempty"`
+	Extra         string `json:"extra"`
 }
 type ServerClient struct {
-	Disabled bool   `json:"disabled"`
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Private  string `json:"private"`
-	Public   string `json:"public"`
-	PSK      string `json:"psk"`
-	Address  string `json:"address"`
-	Address6 string `json:"address6"`
+	Route    ServerDeviceRoute `json:"route,omitempty"`
+	Disabled bool              `json:"disabled"`
+	ID       string            `json:"id"`
+	Name     string            `json:"name"`
+	Private  string            `json:"private"`
+	Public   string            `json:"public"`
+	PSK      string            `json:"psk"`
+	Address  string            `json:"address"`
+	Address6 string            `json:"address6"`
 }
 type ServerConfig struct {
 	Settings ServerSettings `json:"settings"`
@@ -53,30 +56,39 @@ type ServerConfig struct {
 	Clients  []ServerClient `json:"clients"`
 }
 type ServerClientView struct {
-	Disabled  bool   `json:"disabled"`
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Public    string `json:"public"`
-	Address   string `json:"address"`
-	Address6  string `json:"address6"`
-	Handshake int64  `json:"handshake"`
-	RX        uint64 `json:"rx"`
-	TX        uint64 `json:"tx"`
+	Route     ServerDeviceRoute `json:"route"`
+	Disabled  bool              `json:"disabled"`
+	ID        string            `json:"id"`
+	Name      string            `json:"name"`
+	Public    string            `json:"public"`
+	Address   string            `json:"address"`
+	Address6  string            `json:"address6"`
+	Handshake int64             `json:"handshake"`
+	RX        uint64            `json:"rx"`
+	TX        uint64            `json:"tx"`
 }
 type ServerStatus struct {
-	Wanted     bool               `json:"wanted"`
-	Recovering bool               `json:"recovering"`
-	Configured bool               `json:"configured"`
-	Running    bool               `json:"running"`
-	Pending    bool               `json:"pending"`
-	Settings   ServerSettings     `json:"settings"`
-	Public     string             `json:"public"`
-	Clients    []ServerClientView `json:"clients"`
-	DDNS       string             `json:"ddns"`
-	Endpoint   string             `json:"endpoint"`
-	WAN        string             `json:"wan"`
-	LAN        string             `json:"lan"`
-	Warning    string             `json:"warning"`
+	Wanted        bool               `json:"wanted"`
+	Recovering    bool               `json:"recovering"`
+	Configured    bool               `json:"configured"`
+	Running       bool               `json:"running"`
+	Pending       bool               `json:"pending"`
+	Settings      ServerSettings     `json:"settings"`
+	Public        string             `json:"public"`
+	Clients       []ServerClientView `json:"clients"`
+	DDNS          string             `json:"ddns"`
+	Endpoint      string             `json:"endpoint"`
+	WAN           string             `json:"wan"`
+	LAN           string             `json:"lan"`
+	Warning       string             `json:"warning"`
+	ClientEgress  bool               `json:"client_egress"`
+	EgressRules   []serverEgressRule `json:"egress_rules"`
+	LegacyDevices bool               `json:"legacy_devices"`
+}
+
+type serverEgressRule struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 func serverDefaults() ServerSettings {
@@ -308,9 +320,21 @@ func serverAdd(name string) error {
 	if e != nil {
 		return e
 	}
-	var id [8]byte
-	if _, e = rand.Read(id[:]); e != nil {
+	if e = allocateServerDevice(c, &p); e != nil {
 		return e
+	}
+	old := c
+	c.Clients = append(append([]ServerClient{}, c.Clients...), p)
+	return commitPeerChange(old, c, nil, &p)
+}
+
+func allocateServerDevice(c ServerConfig, p *ServerClient) error {
+	if len(c.Clients) >= 10 {
+		return errors.New("最多添加 10 台设备")
+	}
+	var id [8]byte
+	if _, err := rand.Read(id[:]); err != nil {
+		return err
 	}
 	p.ID = fmt.Sprintf("%x", id)
 	used := map[string]bool{}
@@ -320,12 +344,10 @@ func serverAdd(name string) error {
 	for slot := 0; slot < 10; slot++ {
 		p.Address, p.Address6 = serverClientIP(c.Settings, slot)
 		if !used[p.Address] {
-			break
+			return nil
 		}
 	}
-	old := c
-	c.Clients = append(append([]ServerClient{}, c.Clients...), p)
-	return commitPeerChange(old, c, nil, &p)
+	return errors.New("没有可用的设备地址")
 }
 func serverDelete(id string) error {
 	c, e := readServer()
@@ -373,6 +395,11 @@ func serverEndpoint(s ServerSettings) (host, ddns, wan, warning string) {
 func serverStatus() ServerStatus {
 	c, e := readServer()
 	v := ServerStatus{Configured: e == nil, Settings: c.Settings, Public: c.Public, Clients: []ServerClientView{}}
+	v.ClientEgress = serverPolicyAvailable()
+	v.LegacyDevices = exists(legacyServerSettings)
+	for _, rule := range readSettings().Routing.Rules {
+		v.EgressRules = append(v.EgressRules, serverEgressRule{geoRef(rule.ID), rule.Name})
+	}
 	v.Endpoint, v.DDNS, v.WAN, v.Warning = serverEndpoint(c.Settings)
 	if e != nil && !os.IsNotExist(e) {
 		v.Warning = "服务端配置文件读取失败"
@@ -424,6 +451,7 @@ func serverStatus() ServerStatus {
 		hex, _ := keyHex(p.Public)
 		pv := stats[hex]
 		pv.Disabled = p.Disabled
+		pv.Route = p.Route
 		pv.ID = p.ID
 		pv.Name = p.Name
 		pv.Public = p.Public
@@ -435,6 +463,7 @@ func serverStatus() ServerStatus {
 }
 func exportServerClient(c ServerConfig, p ServerClient, host string, lan netip.Prefix, lan6 []string) (string, error) {
 	s := c.Settings
+	s.Internet = p.Route.internet(s)
 	if !validServerHost(host) {
 		return "", errors.New("没有可用外网地址，请配置路由器 DDNS 或手动填写")
 	}
@@ -460,7 +489,20 @@ func exportServerClient(c ServerConfig, p ServerClient, host string, lan netip.P
 		}
 	}
 	dns := strings.TrimSpace(s.DNS)
-	if dns == "" && s.Internet {
+	if p.Route.Scope == "lan" && dns != "" {
+		var reachable []string
+		for _, raw := range strings.Split(dns, ",") {
+			ip, _ := netip.ParseAddr(strings.TrimSpace(raw))
+			for _, network := range allowed {
+				if p, _ := netip.ParsePrefix(network); p.Contains(ip) {
+					reachable = append(reachable, ip.String())
+					break
+				}
+			}
+		}
+		dns = strings.Join(reachable, ", ")
+	}
+	if dns == "" && s.Internet && !s.KeepClientDNS {
 		dns = "1.1.1.1"
 		if s.AllowLAN {
 			ip, err := netip.ParseAddr(nvramValue("lan_ipaddr"))
@@ -469,6 +511,9 @@ func exportServerClient(c ServerConfig, p ServerClient, host string, lan netip.P
 			}
 			dns = ip.String()
 		}
+	}
+	if s.KeepClientDNS {
+		dns = ""
 	}
 	out := fmt.Sprintf("[Interface]\nPrivateKey = %s\nAddress = %s\n", p.Private, addr)
 	if dns != "" {

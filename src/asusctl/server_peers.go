@@ -69,7 +69,11 @@ func commitPeerChange(old, next ServerConfig, before, after *ServerClient) error
 		_ = os.Remove(peerJournal())
 		return errors.New("设备配置保存失败，运行状态未修改")
 	}
-	if _, e = peerRPC(serverSocket, delta); e != nil {
+	_, e = peerRPC(serverSocket, delta)
+	if e == nil {
+		e = replaceDeviceRoutes(next)
+	}
+	if e != nil {
 		undoTarget := before
 		if undoTarget == nil {
 			undoTarget = after
@@ -79,7 +83,8 @@ func commitPeerChange(old, next ServerConfig, before, after *ServerClient) error
 			_, ue = peerRPC(serverSocket, undo)
 		}
 		pe := persistPeerConfig(old)
-		if ue != nil || pe != nil {
+		re := replaceDeviceRoutes(old)
+		if ue != nil || pe != nil || re != nil {
 			return errors.New("设备更新失败且回滚未完成，请查看诊断；其他设备未重置")
 		}
 		if e = os.Remove(peerJournal()); e != nil {

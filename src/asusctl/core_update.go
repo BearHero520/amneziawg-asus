@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-const pluginVersion = "0.5.2"
+const pluginVersion = "0.5.5"
 const coreABI = 1
 const coreSeries = "0.5"
 const coreFeed = "https://raw.githubusercontent.com/BearHero520/amneziawg-asus/main/updates/preview.json"
@@ -39,11 +39,12 @@ type CoreAsset struct {
 	Size   int64  `json:"size"`
 }
 type CoreManifest struct {
-	Version string               `json:"version"`
-	Series  string               `json:"series"`
-	ABI     int                  `json:"abi"`
-	Assets  map[string]CoreAsset `json:"assets"`
-	Checked int64                `json:"checked,omitempty"`
+	Version  string               `json:"version"`
+	Series   string               `json:"series"`
+	ABI      int                  `json:"abi"`
+	Assets   map[string]CoreAsset `json:"assets"`
+	Packages map[string]CoreAsset `json:"packages,omitempty"`
+	Checked  int64                `json:"checked,omitempty"`
 }
 type CoreInfo struct {
 	Version string `json:"version"`
@@ -68,15 +69,22 @@ type CoreJob struct {
 }
 type CoreStatus struct {
 	CoreInfo
-	Plugin    string `json:"plugin"`
-	Latest    string `json:"latest"`
-	Available bool   `json:"available"`
-	Checked   int64  `json:"checked"`
-	Backup    string `json:"backup"`
-	Busy      bool   `json:"busy"`
-	Phase     string `json:"phase"`
-	Message   string `json:"message"`
-	Time      int64  `json:"time"`
+	Plugin    string         `json:"plugin"`
+	Latest    string         `json:"latest"`
+	Available bool           `json:"available"`
+	Release   *PluginRelease `json:"release,omitempty"`
+	Checked   int64          `json:"checked"`
+	Backup    string         `json:"backup"`
+	Busy      bool           `json:"busy"`
+	Phase     string         `json:"phase"`
+	Message   string         `json:"message"`
+	Time      int64          `json:"time"`
+}
+
+type PluginRelease struct {
+	Version   string     `json:"version"`
+	Available bool       `json:"available"`
+	Package   *CoreAsset `json:"package,omitempty"`
 }
 
 var coreArch = func() string {
@@ -120,10 +128,21 @@ func coreStatus() CoreStatus {
 		}
 	}
 	var m CoreManifest
-	if loadJSONFile(updateFile("update-offer.json"), &m) == nil && validateManifest(m, coreArch()) == nil {
-		s.Latest = m.Version
-		s.Checked = m.Checked
-		s.Available = newerCore(m.Version, coreVersion) && time.Now().Unix()-m.Checked < 3600 && m.Checked <= time.Now().Unix()
+	if loadJSONFile(updateFile("update-offer.json"), &m) == nil {
+		compatible := validateManifest(m, s.Arch) == nil
+		pkg, packageErr := packageAsset(m, s.Arch)
+		if compatible || packageErr == nil {
+			s.Checked = m.Checked
+			s.Release = &PluginRelease{Version: m.Version, Available: newerCore(m.Version, s.Plugin)}
+			if s.Release.Available && packageErr == nil {
+				s.Release.Package = &pkg
+			}
+		}
+		if compatible {
+			s.Latest = m.Version
+			now := time.Now().Unix()
+			s.Available = newerCore(m.Version, coreVersion) && now-m.Checked < 3600 && m.Checked <= now
+		}
 	}
 	var b CoreBackup
 	if loadJSONFile(updateFile("core-backup.json"), &b) == nil && exists(coreBinary+".previous") {
@@ -175,15 +194,36 @@ func validateManifest(m CoreManifest, arch string) error {
 	if !ok {
 		return errors.New("发布版本缺少当前架构")
 	}
-	if a.URL != coreReleaseBase+m.Version+"/amneziawg-core_"+m.Version+"_"+arch {
-		return errors.New("核心下载地址不属于本项目发布资源")
+	return validateReleaseAsset(a, coreReleaseBase+m.Version+"/amneziawg-core_"+m.Version+"_"+arch)
+}
+
+func packageAsset(m CoreManifest, arch string) (CoreAsset, error) {
+	if _, err := versionParts(m.Version); err != nil {
+		return CoreAsset{}, err
+	}
+	if arch != "arm64" && arch != "armv7" {
+		return CoreAsset{}, errors.New("不支持的安装包架构")
+	}
+	a, ok := m.Packages[arch]
+	if !ok {
+		return CoreAsset{}, errors.New("发布版本缺少当前架构的安装包")
+	}
+	if err := validateReleaseAsset(a, coreReleaseBase+m.Version+"/amneziawg_"+m.Version+"_"+arch+".tar.gz"); err != nil {
+		return CoreAsset{}, err
+	}
+	return a, nil
+}
+
+func validateReleaseAsset(a CoreAsset, expectedURL string) error {
+	if a.URL != expectedURL {
+		return errors.New("下载地址不属于本项目发布资源")
 	}
 	hash, e := hex.DecodeString(a.SHA256)
 	if e != nil || len(hash) != 32 || a.SHA256 != strings.ToLower(a.SHA256) {
 		return errors.New("SHA256 校验信息无效")
 	}
 	if a.Size < 1024 || a.Size > 32<<20 {
-		return errors.New("核心大小超出限制")
+		return errors.New("发布资源大小超出限制")
 	}
 	return nil
 }
@@ -244,7 +284,10 @@ func checkCore() error {
 		return errors.New("更新清单格式错误")
 	}
 	if e = validateManifest(m, coreArch()); e != nil {
-		return e
+		// Incompatible core releases can still offer a complete plugin package.
+		if _, packageErr := packageAsset(m, coreArch()); packageErr != nil {
+			return e
+		}
 	}
 	m.Checked = time.Now().Unix()
 	return writeJSON(updateFile("update-offer.json"), m)
@@ -677,7 +720,7 @@ func executeCore(action string) (Result, error) {
 	case "core-status", "core-info":
 	case "core-check":
 		e = checkCore()
-		message = "检查完成"
+		message = "插件和核心版本检查完成"
 	case "core-upgrade":
 		e = queueCore(false)
 		message = "升级任务已提交，可在此页查看进度"

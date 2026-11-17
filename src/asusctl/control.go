@@ -28,17 +28,18 @@ var settingsPath = Root + "/config/settings.json"
 var statePath = runtimeDir + "/state.json"
 
 type Settings struct {
-	Mode          string   `json:"mode"`
-	Source        string   `json:"source"`
-	Auto          bool     `json:"auto"`
-	IPv6          bool     `json:"ipv6"`
-	Source6       string   `json:"source6"`
-	DNS           bool     `json:"dns"`
-	KillSwitch    bool     `json:"kill_switch"`
-	Profile       string   `json:"profile"`
-	Failover      bool     `json:"failover"`
-	Fallbacks     []string `json:"fallbacks"`
-	HealthTargets []string `json:"health_targets"`
+	Mode          string          `json:"mode"`
+	Source        string          `json:"source"`
+	Auto          bool            `json:"auto"`
+	IPv6          bool            `json:"ipv6"`
+	Source6       string          `json:"source6"`
+	DNS           bool            `json:"dns"`
+	KillSwitch    bool            `json:"kill_switch"`
+	Profile       string          `json:"profile"`
+	Failover      bool            `json:"failover"`
+	Fallbacks     []string        `json:"fallbacks"`
+	HealthTargets []string        `json:"health_targets"`
+	Routing       RoutingSettings `json:"routing"`
 }
 type Command struct {
 	Name string
@@ -55,33 +56,44 @@ type PeerStatus struct {
 	TX        uint64 `json:"tx"`
 }
 type Status struct {
-	Running      bool         `json:"running"`
-	Configured   bool         `json:"configured"`
-	Settings     Settings     `json:"settings"`
-	Peers        []PeerStatus `json:"peers"`
-	DNS          []string     `json:"dns"`
-	Version      string       `json:"version"`
-	Protected    bool         `json:"protected"`
-	GuardPending bool         `json:"guard_pending"`
-	Profiles     []Profile    `json:"profiles"`
-	Health       Health       `json:"health"`
+	Running      bool             `json:"running"`
+	Configured   bool             `json:"configured"`
+	Settings     Settings         `json:"settings"`
+	Peers        []PeerStatus     `json:"peers"`
+	DNS          []string         `json:"dns"`
+	Version      string           `json:"version"`
+	Protected    bool             `json:"protected"`
+	GuardPending bool             `json:"guard_pending"`
+	Profiles     []Profile        `json:"profiles"`
+	Health       Health           `json:"health"`
+	RuleLists    policyListStatus `json:"rule_lists"`
 }
 type Result struct {
-	Core        *CoreStatus   `json:"core,omitempty"`
-	Logs        []LogEntry    `json:"logs,omitempty"`
-	Diagnostics []Diagnostic  `json:"diagnostics,omitempty"`
-	OK          bool          `json:"ok"`
-	Message     string        `json:"message"`
-	Status      *Status       `json:"status,omitempty"`
-	Server      *ServerStatus `json:"server,omitempty"`
-	Export      string        `json:"export,omitempty"`
-	Filename    string        `json:"filename,omitempty"`
+	Core        *CoreStatus     `json:"core,omitempty"`
+	Logs        []LogEntry      `json:"logs,omitempty"`
+	Diagnostics []Diagnostic    `json:"diagnostics,omitempty"`
+	OK          bool            `json:"ok"`
+	Message     string          `json:"message"`
+	Status      *Status         `json:"status,omitempty"`
+	Server      *ServerStatus   `json:"server,omitempty"`
+	Export      string          `json:"export,omitempty"`
+	Filename    string          `json:"filename,omitempty"`
+	Traffic     json.RawMessage `json:"traffic,omitempty"`
 }
 
 var runCommand = func(name string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	timeout := 15 * time.Second
+	if name == "/bin/sh" && len(args) == 2 && args[0] == policyScript {
+		timeout = 75 * time.Second
+		if args[1] == "fetch" {
+			timeout = 8 * time.Minute
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	out, e := exec.CommandContext(ctx, name, args...).CombinedOutput()
+	process := exec.CommandContext(ctx, name, args...)
+	process.WaitDelay = 2 * time.Second
+	out, e := process.CombinedOutput()
 	if e != nil {
 		return string(out), fmt.Errorf("%s 执行失败: %s", name, strings.TrimSpace(string(out)))
 	}
@@ -140,8 +152,11 @@ func readSettings() Settings {
 }
 func exists(path string) bool { _, e := os.Stat(path); return e == nil }
 func validateSettings(s Settings) error {
-	if s.Mode != "tunnel" && s.Mode != "lan" {
+	if s.Mode != "tunnel" && s.Mode != "lan" && s.Mode != "policy" {
 		return errors.New("不支持的路由模式")
+	}
+	if e := s.Routing.validate(); e != nil {
+		return e
 	}
 	if s.Source != "" {
 		p, e := netip.ParsePrefix(s.Source)
@@ -255,9 +270,13 @@ func resolveEndpoint(ep string) (string, error) {
 func readStatus() Status {
 	s := Status{Settings: readSettings(), Version: coreVersion, Peers: []PeerStatus{}, DNS: []string{}}
 	s.Protected = guardActive()
+	if s.Settings.Mode == "policy" && s.Settings.Routing.KillSwitch && activePolicy() {
+		s.Protected = true
+	}
 	s.GuardPending = exists(guardPath) && !s.Protected
 	s.Profiles = profiles()
 	s.Health = health()
+	s.RuleLists = readPolicyLists()
 	if c, e := readConfig(); e == nil {
 		s.Configured = true
 		for _, ip := range c.DNS {
@@ -354,6 +373,12 @@ func down() error {
 	var state State
 	if e = json.Unmarshal(b, &state); e != nil {
 		return e
+	}
+	if readSettings().Mode == "policy" {
+		deactivatePolicy()
+		if e = syncPolicyPeers(); e != nil {
+			return e
+		}
 	}
 	failed := []Command{}
 	var problems []string
@@ -498,6 +523,15 @@ func up() (err error) {
 	if s.Mode == "tunnel" {
 		return nil
 	}
+	if s.Mode == "policy" {
+		if e = applyPolicyNetwork(state, c, s.Routing, uapi); e != nil {
+			return e
+		}
+		if e = syncPolicyPeers(); e != nil {
+			return e
+		}
+		return queuePolicyLists(false)
+	}
 	for _, n := range ns {
 		if e = applyNetwork(state, c, s, n); e != nil {
 			return e
@@ -540,6 +574,10 @@ func execute(action string) (result Result, err error) {
 	if action == "status" {
 		s := readStatus()
 		return Result{OK: true, Message: "状态已刷新", Status: &s}, nil
+	}
+	if action == "traffic-status" {
+		s := readStatus()
+		return Result{OK: true, Message: "流量分析已刷新", Traffic: readTrafficAnalysis(), Status: &s}, nil
 	}
 	release, e := lock()
 	if e != nil {
@@ -591,15 +629,29 @@ func execute(action string) (result Result, err error) {
 			return Result{}, e
 		}
 	case "watch":
-		if e = errors.Join(superviseServer(false), watch()); e != nil {
+		if e = errors.Join(superviseServer(false), watch(), watchPolicyDNS(), queuePolicyLists(false)); e != nil {
 			return Result{}, e
 		}
+	case "routing-refresh":
+		if e = queuePolicyLists(true); e != nil {
+			return Result{}, e
+		}
+	case "traffic-start", "traffic-stop":
+		if action == "traffic-start" {
+			e = startTrafficAnalysis()
+		} else {
+			e = policyRun("analyze-stop")
+		}
+		if e != nil {
+			return Result{}, e
+		}
+		return Result{OK: true, Message: "流量分析已更新", Traffic: readTrafficAnalysis()}, nil
 	case "settings":
 		if exists(statePath) || exists(guardPath) {
 			return Result{}, errors.New("请先停止并恢复直连后再修改设置")
 		}
 		var s Settings
-		d := json.NewDecoder(io.LimitReader(requestInput(), 4096))
+		d := json.NewDecoder(io.LimitReader(requestInput(), 50001))
 		d.DisallowUnknownFields()
 		if e = d.Decode(&s); e != nil {
 			return Result{}, errors.New("设置格式错误")
@@ -607,8 +659,15 @@ func execute(action string) (result Result, err error) {
 		if e = validateSettings(s); e != nil {
 			return Result{}, e
 		}
+		if e = validatePeerRoutingRules(s.Routing); e != nil {
+			return Result{}, e
+		}
+		resetLists := policySettingsText(s.Routing) != policySettingsText(readSettings().Routing)
 		if e = writeJSON(settingsPath, s); e != nil {
 			return Result{}, e
+		}
+		if resetLists {
+			_ = atomicWrite(routingFile("refresh-next"), []byte("1"))
 		}
 	case "up":
 		if e = up(); e != nil {
@@ -680,6 +739,9 @@ func Run(args []string) bool {
 	if e == nil {
 		if args[1] == "ctl" && args[2] == "core-worker" {
 			e = runCoreWorker()
+			result.OK = e == nil
+		} else if args[1] == "ctl" && args[2] == "policy-list-worker" {
+			e = policyListWorker()
 			result.OK = e == nil
 		} else if args[1] == "ctl" && args[2] == "core-boot-recover" {
 			e = recoverCoreBoot()

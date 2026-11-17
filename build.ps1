@@ -1,11 +1,11 @@
 param([switch]$SkipTests)
 $ErrorActionPreference = 'Stop'
 $projectRoot = $PSScriptRoot
-$upstreamRoot = Join-Path $projectRoot 'upstream\amneziawg-go'
-$tag = 'v3.1.20260828'
-$commit = 'b5928efb6ca19f0153958460c3d141f04abc5c2e'
+$upstreamRoot = Join-Path $projectRoot 'upstream\amneziawg-router'
+$tag = 'router-build-v31-1.5.25'
+$commit = 'e6019e65ef29d7e5f74b83def1d7ff2fd124790b'
 if (!(Test-Path -LiteralPath $upstreamRoot)) {
- git clone --depth 1 --branch $tag https://github.com/amnezia-vpn/amneziawg-go.git $upstreamRoot
+ git clone --depth 1 --branch $tag https://github.com/william-aqn/amneziawg-go.git $upstreamRoot
  if ($LASTEXITCODE -ne 0) { throw 'Git clone failed' }
 }
 $actual = git -C $upstreamRoot rev-parse HEAD
@@ -17,7 +17,7 @@ $originalMain = (git -C $upstreamRoot show HEAD:main.go) -join "`n"
 if ($LASTEXITCODE -ne 0) { throw 'Cannot read upstream main.go' }
 $patched = $originalMain.Replace('"fmt"', '"fmt"' + "`n" + '"github.com/amnezia-vpn/amneziawg-go/v3/asusctl"').Replace('func main() {', 'func main() {' + "`n" + 'if asusctl.Run(os.Args) { return }')
 [IO.File]::WriteAllText((Join-Path $upstreamRoot 'main.go'), $patched, [Text.UTF8Encoding]::new($false))
-[IO.File]::WriteAllText((Join-Path $upstreamRoot 'version.go'), "package main`nconst Version = `"3.1.20260828-asus-0.5.2`"`n", [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $upstreamRoot 'version.go'), "package main`nconst Version = `"3.1.20260828-asus-0.5.5`"`n", [Text.UTF8Encoding]::new($false))
 if (!$SkipTests) {
  python (Join-Path $projectRoot 'scripts\test_shell_compat.py')
  if ($LASTEXITCODE -ne 0) { throw 'Shell compatibility tests failed' }
@@ -33,6 +33,8 @@ if (!$SkipTests) {
  if ($LASTEXITCODE -ne 0) { throw 'Hot peer UI tests failed' }
  node (Join-Path $projectRoot 'scripts\test_server_ui.js')
  if ($LASTEXITCODE -ne 0) { throw 'Server UI tests failed' }
+ node (Join-Path $projectRoot 'scripts\test_routing_ui.js')
+ if ($LASTEXITCODE -ne 0) { throw 'Routing UI tests failed' }
 }
 $oldGOOS=$env:GOOS; $oldGOARCH=$env:GOARCH; $oldCGO=$env:CGO_ENABLED; $oldGOARM=$env:GOARM
 Push-Location $upstreamRoot

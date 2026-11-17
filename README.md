@@ -1,8 +1,19 @@
 # AmneziaWG for ASUS
 
-面向 **华硕 ASUSGO / KoolCenter 软件中心，分别提供 ARM64 与 ARMv7 包** 的 AmneziaWG 客户端与服务端插件。当前版本 **0.5.2 测试版**，社区适配项目，非华硕或 Amnezia 官方插件。
+面向 **华硕 ASUSGO / KoolCenter 软件中心，分别提供 ARM64 与 ARMv7 包** 的 AmneziaWG 客户端与服务端插件。当前预览版为 **0.5.5**。
 
-[下载安装包](https://github.com/BearHero520/amneziawg-asus/releases/tag/v0.5.2) · [验证记录](docs/TESTING.md) · [反馈问题](https://github.com/BearHero520/amneziawg-asus/issues)
+华硕版作者及维护者 [BearHero520](https://github.com/BearHero520)。
+
+[下载安装包](https://github.com/BearHero520/amneziawg-asus/releases/tag/v0.5.5) · [验证记录](docs/TESTING.md) · [反馈问题](https://github.com/BearHero520/amneziawg-asus/issues)
+
+## 0.5.5 设备接入、分流与在线更新
+
+- 在「在线更新」手动检查当前插件和核心版本。发现可用的完整插件时，会显示对应架构的离线包和 SHA-256 校验值。适配核心可在同一页升级或回滚。
+- 在「服务端 → 接入设备」逐台设置访问范围和出口，查看握手、收发流量、启停设备、扫码或下载配置。出口变更作用于新连接。修改访问范围需要重新导入该设备的配置。
+- 启用「通过家里上网」后，设备可选宽带直出、路由器透明代理、客户端隧道或一套客户端分流规则。客户端分流停止时，选择客户端隧道的设备使用家庭宽带。
+- 在「客户端设置 → 按设备和规则分流」用 IPv4 或 MAC 地址选择设备，配置 GeoIP、GeoSite、Antifilter、自定义列表和例外规则。沿用路由器 DNS 或选择 DNS 接管，按设备分析流量并将结果加入规则。此模式运行于 IPv4，IPv6 双栈 AllowedIPs 分流可在原 LAN 模式使用。
+- 分流模式需要当前客户端节点的 AllowedIPs 覆盖全部 IPv4。规则地址集使用固件的 `ipset`，域名规则需要支持 `ipset=` 的 dnsmasq 和 JFFS 脚本。设备使用路由器 DNS 时，域名结果加入相应地址集。
+- 完整插件升级沿用原服务端和原客户端的配置。0.5.3 独立服务端使用另一套服务端身份。进入「接入设备 → 导入旧版设备」可导入归档中的设备，随后重新扫码或下载配置。
 
 ## 0.5.2 服务端保活与恢复重试
 
@@ -13,8 +24,6 @@
 - 页面显示恢复等待状态，提供“停止并取消重试”；设备事务未完成时暂停自动恢复，避免覆盖设备变更。
 - 继承 0.5.1 二维码脚本与固件 RequireJS 的兼容修复。
 
-**请更新完整插件包获得新的状态与取消重试按钮；仅在线更新核心不会更新网页资源。** 安装后 Ctrl+F5 刷新。
-
 ## 支持范围
 
 - 不再限制 RT-BE88U 型号；ARM64 对应 `uname -m = aarch64`，ARMv7 对应 `armv7l`（GOARM=7）。软件中心包标记支持 HND，ARMv7 包另包含 arm384。
@@ -22,7 +31,7 @@
 - 内核要求来自 [Go 官方最低运行要求](https://go.dev/wiki/MinimumRequirements)。安装时先检查架构、内核和核心能否运行，再写入插件。
 - 开发验证环境：`3.0.0.6.102_39256_koolcenter`，软件中心 `1.9.56`。
 - 需要固件提供软件中心、dbus、iproute2、iptables 和 TUN；IPv6 还需要 ip6tables/NAT66 与可用 IPv6 出口。
-- 固定上游 [amnezia-vpn/amneziawg-go](https://github.com/amnezia-vpn/amneziawg-go)，标签 `v3.1.20260828`，提交 `b5928efb6ca19f0153958460c3d141f04abc5c2e`。只增加 ASUS 管理入口和构建版本字符串，没有修改加密、握手、混淆实现。
+- 0.5.5 构建固定使用 [AmneziaWG-Go 路由器分支](https://github.com/william-aqn/amneziawg-go/tree/e6019e65ef29d7e5f74b83def1d7ff2fd124790b)，叠加本项目的 ASUS 管理入口。Geo 与流量分析辅助代码改编自 [Merlin v1.5.30](https://github.com/william-aqn/asuswrt-merlin-amneziawg/tree/8dd8032a2206a08d7f898b1e4141790f86e6fee5)。
 
 ## 功能
 
@@ -41,9 +50,9 @@
 - 仅建立隧道或按局域网来源、AllowedIPs 分流；可选 IPv6。
 - DNS 接管、断线保护与探测失败后的备用节点切换，需满足页面提示的网络前提。
 
-### 核心在线更新
+### 在线更新
 
-- “核心更新”页手动检查本项目 GitHub 预览通道；不会定时自动安装。
+- “在线更新”页手动检查本项目 GitHub 预览通道。完整插件包下载后通过软件中心离线安装。
 - 显示当前核心、架构、插件界面版本、可用版本、备份与任务进度；升级前确认短暂断线。
 - 固定 HTTPS 来源、SHA256、大小、ELF 架构和管理接口版本校验；更新清单一小时有效，并固定用户确认的目标版本。
 - 后台任务下载、验证、保留旧核心并原子切换；恢复原先运行的客户端/服务端，不更改配置、设备密钥或开机启动选择。
@@ -60,9 +69,9 @@
 
 ## 安装与使用
 
-1. 在 Releases 按架构下载 `amneziawg_0.5.2_arm64.tar.gz` 或 `amneziawg_0.5.2_armv7.tar.gz`，可用附带的 `SHA256SUMS.txt` 校验。RT-BE88U 选 ARM64。
+1. 在 Releases 按架构下载 `amneziawg_0.5.5_arm64.tar.gz` 或 `amneziawg_0.5.5_armv7.tar.gz`，可用附带的 `SHA256SUMS.txt` 校验。RT-BE88U 选 ARM64。
 2. 进入软件中心 → 离线安装，上传原始 `.tar.gz`，无需手动解压。
-3. 安装后打开插件，必要时 Ctrl+F5 刷新，确认显示 0.5.2。
+3. 安装后打开插件，必要时 Ctrl+F5 刷新，确认显示 0.5.5。
 4. 服务端首次配置：保存设置 → 添加设备 → 导出/扫码导入客户端配置 → 启动服务端。
 5. 使用外网设备验证回家连接；公网入站必须可达，DDNS 本身不能穿透运营商 NAT，上级路由可能需要转发 UDP 端口。
 
@@ -90,7 +99,7 @@
 .\build.ps1
 ```
 
-脚本固定上游提交，复制 `src/asusctl` 管理层，运行测试，交叉编译 Linux ARM64 与 ARMv7，并生成两份离线包、两份独立核心、更新清单与校验文件。产物位于 `dist/`。`-SkipTests` 仅供本地调试使用。独立 QR 解码器为可选发布 QA 依赖，未提供时不运行该附加解码检查。
+脚本固定上游提交，复制 `src/asusctl` 管理层，运行测试，交叉编译 Linux ARM64 与 ARMv7，并生成两份离线包、两份独立核心、更新清单与校验文件。产物位于 `dist/`。本地构建保留已经发布的预览更新清单。`-SkipTests` 仅供本地调试使用。独立 QR 解码器为可选发布 QA 依赖，未提供时不运行该附加解码检查。
 
 目录：`src/asusctl` 管理层；`plugin` 安装脚本和页面资源；`scripts` 打包与前端/Shell 测试；`docs` 验证说明。上游源码、构建二进制、本地配置和临时工作记录不纳入 Git。
 

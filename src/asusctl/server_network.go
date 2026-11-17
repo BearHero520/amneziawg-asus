@@ -85,7 +85,9 @@ func serverPlan(s ServerSettings, family, lanIf, wanIf, lanIP string, lans []str
 		for _, lan := range lans {
 			rule("filter", "AWGS_F", "-i", serverInterface, "-s", source, "-o", lanIf, "-d", lan, "-j", "ACCEPT")
 		}
-		rule("nat", "POSTROUTING", "-s", source, "-o", lanIf, "-j", "MASQUERADE")
+		if !s.KeepLANSource {
+			rule("nat", "POSTROUTING", "-s", source, "-o", lanIf, "-j", "MASQUERADE")
+		}
 	}
 	if s.Internet {
 		blocked := []string{"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12", "192.168.0.0/16", "224.0.0.0/4", "240.0.0.0/4"}
@@ -147,6 +149,9 @@ func serverDown() error {
 	out, e := runCommand("ip", "link", "del", "dev", serverInterface)
 	if e != nil && !missingResource(out) {
 		return errors.New("服务端接口未能关闭；保留防火墙规则")
+	}
+	if e = clearDeviceRoutes(); e != nil {
+		return e
 	}
 	failed := []Command{}
 	var errs []string
@@ -274,6 +279,12 @@ func serverUp() (err error) {
 		}
 		plan = append(plan, serverPlan(s, family, lanIf, w, lip, lans)...)
 		plan = append(plan, serverPolicyStep(family, priority))
+		if family == "-4" {
+			withMain := fmt.Sprintf("%s\n%d: from all iif %s lookup main", rules, priority, serverInterface)
+			if marked, err := chooseServerPriority(withMain, address); err == nil {
+				plan = append(plan, serverMarkedPolicyStep(marked))
+			}
+		}
 	}
 	// Detect conflicts with native WireGuard and other UDP services before mutation.
 	listener, e := net.ListenPacket("udp", ":"+strconv.Itoa(s.Port))
@@ -356,7 +367,7 @@ func serverUp() (err error) {
 			return e
 		}
 	}
-	return nil
+	return replaceDeviceRoutes(c)
 }
 func executeServer(action string) (Result, error) {
 	var e error
@@ -377,6 +388,19 @@ func executeServer(action string) (Result, error) {
 		if e == nil {
 			e = serverAdd(p.Name)
 		}
+	case "server-route":
+		var p struct {
+			ID string `json:"id"`
+			ServerDeviceRoute
+		}
+		e = readServerPayload(&p)
+		if e == nil {
+			e = serverSetDeviceRoute(p.ID, p.ServerDeviceRoute)
+		}
+	case "server-import-legacy":
+		var count int
+		count, e = importLegacyDevices()
+		result.Message = fmt.Sprintf("已导入 %d 台设备。请从接入设备表格重新扫码或下载配置。", count)
 	case "server-delete", "server-export", "server-enable", "server-disable":
 		var p struct {
 			ID string `json:"id"`

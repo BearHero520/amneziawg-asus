@@ -31,12 +31,15 @@ if [ -x /koolshare/bin/amneziawg-go ]; then
  fi
  /koolshare/bin/amneziawg-go ctl down || { echo '旧版本清理失败，取消升级'; exit 1; }
 fi
-mkdir -p /koolshare/amneziawg/config /koolshare/amneziawg/licenses /koolshare/init.d
+if [ -x /koolshare/amneziawg/advanced/manage.sh ]; then
+ /bin/sh /koolshare/amneziawg/advanced/manage.sh uninstall || { echo '旧版独立服务清理失败，取消升级'; exit 1; }
+fi
+mkdir -p /koolshare/amneziawg/config /koolshare/amneziawg/licenses /koolshare/amneziawg/policy /koolshare/init.d
 chmod 700 /koolshare/amneziawg /koolshare/amneziawg/config
 cp "$DIR/bin/amneziawg-go" /koolshare/bin/amneziawg-go.new
 chmod 755 /koolshare/bin/amneziawg-go.new
 mv /koolshare/bin/amneziawg-go.new /koolshare/bin/amneziawg-go
-printf '%s\n' '0.5.2' > /koolshare/amneziawg/plugin-version
+printf '%s\n' '0.5.5' > /koolshare/amneziawg/plugin-version
 rm -f /koolshare/bin/amneziawg-go.previous /koolshare/amneziawg/core-backup.json /koolshare/amneziawg/update-offer.json /koolshare/amneziawg/update-state.json
 cp "$DIR/scripts/amneziawg_api.sh" /koolshare/scripts/amneziawg_api.sh
 cp "$DIR/scripts/amneziawg_service.sh" /koolshare/scripts/amneziawg_service.sh
@@ -52,7 +55,8 @@ chmod 644 /koolshare/res/amneziawg-core.js
 cp "$DIR/res/amneziawg-logs.js" /koolshare/res/amneziawg-logs.js
 chmod 644 /koolshare/res/amneziawg-logs.js
 cp "$DIR/res/amneziawg-server.js" /koolshare/res/amneziawg-server.js
-chmod 644 /koolshare/res/amneziawg-server.js
+cp "$DIR/res/amneziawg-routing.js" /koolshare/res/amneziawg-routing.js
+chmod 644 /koolshare/res/amneziawg-server.js /koolshare/res/amneziawg-routing.js
 cp "$DIR/res/amneziawg-0.5.0.css" /koolshare/res/amneziawg-0.5.0.css
 mkdir -p /koolshare/res/amneziawg-icons
 cp "$DIR/res/amneziawg-icons/"*.svg /koolshare/res/amneziawg-icons/
@@ -60,8 +64,10 @@ chmod 755 /koolshare/res/amneziawg-icons
 chmod 644 /koolshare/res/amneziawg-ui.js /koolshare/res/amneziawg-0.5.0.css /koolshare/res/amneziawg-icons/*.svg
 cp "$DIR/res/icon-amneziawg.png" /koolshare/res/icon-amneziawg.png
 cp "$DIR/licenses/"* /koolshare/amneziawg/licenses/
+cp "$DIR/policy/"*.sh /koolshare/amneziawg/policy/
 chmod 755 /koolshare/scripts/amneziawg_*.sh /koolshare/scripts/uninstall_amneziawg.sh
 chmod 644 /koolshare/webs/Module_amneziawg.asp /koolshare/res/amneziawg.js /koolshare/res/icon-amneziawg.png
+/bin/sh /koolshare/amneziawg/policy/install-hook.sh install
 ln -sf /koolshare/scripts/amneziawg_service.sh /koolshare/init.d/S95amneziawg.sh
 ln -sf /koolshare/scripts/amneziawg_service.sh /koolshare/init.d/N95amneziawg.sh
 if has_tool cru; then
@@ -79,11 +85,11 @@ if ! grep -q '^# BEGIN AMNEZIAWG DNS$' "$DNS_ADD" 2>/dev/null; then
  mv "$DNS_ADD.awg-new" "$DNS_ADD"
  if has_tool service; then service restart_dnsmasq; fi
 fi
-dbus set amneziawg_version=0.5.2
-dbus set softcenter_module_amneziawg_version=0.5.2
+dbus set amneziawg_version=0.5.5
+dbus set softcenter_module_amneziawg_version=0.5.5
 dbus set softcenter_module_amneziawg_install=1
 dbus set softcenter_module_amneziawg_name=amneziawg
 dbus set softcenter_module_amneziawg_title=AmneziaWG
-dbus set softcenter_module_amneziawg_description='AmneziaWG 客户端与服务端 · ARM64 / ARMv7 测试版'
+dbus set softcenter_module_amneziawg_description='AmneziaWG 客户端与服务端 · ARM64 / ARMv7 · 作者 BearHero520'
 dbus set softcenter_module_amneziawg_home_url=Module_amneziawg.asp
 echo 'AmneziaWG 安装完成。隧道尚未启动，请打开插件导入配置。'

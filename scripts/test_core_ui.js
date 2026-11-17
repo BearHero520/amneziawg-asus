@@ -8,4 +8,13 @@ request=null;c.awgCoreAsk('core-rollback');c.awgCoreCancel();el('core_ack').chec
 c.awgCoreAsk('core-upgrade');el('core_ack').checked=true;s.latest='0.5.2';c.awgCoreRender(s);c.awgCoreConfirm();assert.equal(request,null,'changed offer must be reconfirmed');
 s.busy=true;c.awgCoreRender(s);assert(el('core_upgrade').disabled);assert(el('core_check').disabled);assert(el('core_confirmation').hidden);c.awgCoreAsk('core-upgrade');assert(el('core_confirmation').hidden);
 s.busy=false;s.available=false;s.backup=s.version;c.awgCoreRender(s);assert(el('core_upgrade').disabled);assert(el('core_rollback').disabled);
+const pkg={url:'https://github.com/BearHero520/amneziawg-asus/releases/download/v0.5.6/amneziawg_0.5.6_arm64.tar.gz',sha256:'a'.repeat(64),size:4096};
+s.release={version:'0.5.6',available:true,package:pkg};c.awgCoreRender(s);
+assert(!el('plugin_download').hidden);assert.equal(el('plugin_download').href,pkg.url);assert.equal(el('plugin_checksum').textContent,pkg.sha256);assert(el('core_upgrade').disabled);
+s.release={version:s.plugin,available:false};c.awgCoreRender(s);
+assert(el('plugin_download').hidden);assert(el('plugin_checksum_row').hidden);assert.equal(el('plugin_download').href,'');
+const html=fs.readFileSync(__dirname+'/../plugin/webs/Module_amneziawg.asp','utf8');
+for(const id of Object.keys(nodes))assert(html.includes('id="'+id+'"'),'missing '+id);
+assert(html.includes('作者 <a href="https://github.com/BearHero520"'));
 console.log('PASS update confirmation, cancel, changed-version guard, busy state, no-update and same-version rollback');
+console.log('PASS separate plugin offer, package URL and checksum, and author attribution');

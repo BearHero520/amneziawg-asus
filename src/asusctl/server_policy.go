@@ -86,3 +86,11 @@ func serverPolicyStep(family string, priority int) serverStep {
 	p := strconv.Itoa(priority)
 	return serverStep{cmd("ip", family, "rule", "add", "priority", p, "iif", serverInterface, "lookup", "main"), cmd("ip", family, "rule", "del", "priority", p, "iif", serverInterface, "lookup", "main")}
 }
+
+func serverMarkedPolicyStep(priority int) serverStep {
+	args := []string{"priority", strconv.Itoa(priority), "iif", serverInterface, "fwmark", policyMark, "lookup", policyTable}
+	return serverStep{
+		cmd("ip", append([]string{"-4", "rule", "add"}, args...)...),
+		cmd("ip", append([]string{"-4", "rule", "del"}, args...)...),
+	}
+}

@@ -34,7 +34,7 @@ function awgUIRender(s){
  awgEl('awg_active_name').textContent=active?active.name:s.configured?'默认节点':'尚未添加节点';
  awgEl('awg_endpoint').textContent=s.peers&&s.peers[0]&&s.peers[0].endpoint?'· '+s.peers[0].endpoint:'';
  awgEl('awg_home_hint').textContent=s.running?'隧道已启动。是否连通，请查看最近握手。':s.configured?'准备就绪，点击连接即可建立隧道。':'导入服务端配置，或像 WireGuard 一样填写信息。';
- awgEl('awg_route_badge').textContent=s.settings.mode==='lan'?'局域网分流'+(s.settings.ipv6?' · IPv4 + IPv6':' · IPv4'):'仅建立隧道';
+ awgEl('awg_route_badge').textContent=s.settings.mode==='policy'?'按设备和规则分流 · IPv4':s.settings.mode==='lan'?'局域网分流'+(s.settings.ipv6?' · IPv4 + IPv6':' · IPv4'):'仅建立隧道';
  var rx=0,tx=0;(s.peers||[]).forEach(function(p){rx+=p.rx||0;tx+=p.tx||0;});awgEl('awg_total_rx').textContent=awgBytes(rx);awgEl('awg_total_tx').textContent=awgBytes(tx);
  awgEl('awg_protection_title').textContent=s.protected?'断线保护规则已安装':s.guard_pending?'断线保护待修复':'按需开启连接保护';
  awgEl('awg_protection_note').textContent=s.protected?'所选设备受保护，停止连接才恢复直连。':s.guard_pending?'请查看连接详情，或停止并恢复直连。':'在设置中配置 DNS 接管与断线保护。';
